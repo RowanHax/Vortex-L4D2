@@ -14,9 +14,13 @@
 
 #include "Esp.hpp"
 
+#include "ItemEsp.hpp"
+
 #include "Hitmarker.hpp"
 
 #include "ChatSpy.hpp"
+
+#include "World.hpp"
 
 #include "D3D9.hpp"
 
@@ -318,7 +322,13 @@ static long __stdcall EndScene_Hook(IDirect3DDevice9* Device)
 		Update_Esp();
 	}
 
+	Update_Item_Esp();
+
 	Update_Chat_Spy_Feed();
+
+	World_Update_Cvars();
+
+	World_Update_Materials();
 
 	if (No_Visual_Recoil_Enabled == true)
 	{
@@ -367,7 +377,6 @@ static long __stdcall EndScene_Hook(IDirect3DDevice9* Device)
 		Show_Menu();
 	}
 
-	if (Watermark_Enabled == true)
 	{
 		ImDrawList* Draw_List = ImGui::GetBackgroundDrawList();
 
@@ -381,7 +390,7 @@ static long __stdcall EndScene_Hook(IDirect3DDevice9* Device)
 
 		ImVec2 Title_Size = Font->CalcTextSizeA(Font_Size, FLT_MAX, 0.f, "VORTEX");
 
-		ImVec2 Sub_Size = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, 0.f, " v1.0 - beta");
+		ImVec2 Sub_Size = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, 0.f, " v1.1 - beta");
 
 		const ImVec2 Box_Size(Title_Size.x + Sub_Size.x + Padding * 2.f, Font_Size + Padding * 2.f);
 
@@ -393,7 +402,7 @@ static long __stdcall EndScene_Hook(IDirect3DDevice9* Device)
 
 		Draw_List->AddText(Font, Font_Size, ImVec2(Position.x + Padding, Text_Y), M_U32(0xFF, 0x50, 0x5A), "VORTEX");
 
-		Draw_List->AddText(ImVec2(Position.x + Padding + Title_Size.x, Text_Y + 2.f), M_U32(0xB5, 0xB5, 0xB5), "v1.0 - beta");
+		Draw_List->AddText(ImVec2(Position.x + Padding + Title_Size.x, Text_Y + 2.f), M_U32(0xB5, 0xB5, 0xB5), "v1.1 - beta");
 	}
 
 	ImGui::Render();

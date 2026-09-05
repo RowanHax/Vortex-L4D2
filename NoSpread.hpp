@@ -9,6 +9,7 @@
 #include "Internal.hpp"
 
 #include "D3D9.hpp"
+
 #include "Sdk.hpp"
 
 extern bool Vortex_No_Spread_Enabled;

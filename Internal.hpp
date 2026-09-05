@@ -110,8 +110,6 @@ extern float Esp_Team2_Color[4];
 
 extern float Esp_Team3_Color[4];
 
-extern bool Watermark_Enabled;
-
 extern bool No_Vomit_Enabled;
 
 extern bool Chams_Enabled;
@@ -173,6 +171,86 @@ extern bool Vortex_Aimbot_Ignore_Witch;
 extern bool Vortex_No_Spread_Enabled;
 
 extern bool Mods_Online_Enabled;
+
+extern bool Item_Esp_Enabled;
+
+extern bool Item_Esp_Weapons_Text;
+
+extern bool Item_Esp_Weapons_Boxes;
+
+extern float Item_Esp_Weapons_Color[4];
+
+extern bool Item_Esp_Heal_Enabled;
+
+extern bool Item_Esp_Heal_Text;
+
+extern bool Item_Esp_Heal_Boxes;
+
+extern float Item_Esp_Heal_Color[4];
+
+extern bool Item_Esp_Mounted_Enabled;
+
+extern bool Item_Esp_Mounted_Text;
+
+extern bool Item_Esp_Mounted_Boxes;
+
+extern float Item_Esp_Mounted_Color[4];
+
+extern bool Anti_Aim_Enabled;
+
+extern bool Anti_Aim_Silent;
+
+extern __int32 Anti_Aim_Yaw_Mode;
+
+extern float Anti_Aim_Yaw_Value;
+
+extern __int32 Anti_Aim_Pitch_Mode;
+
+extern float Anti_Aim_Pitch_Value;
+
+extern bool Chat_Spammer_Enabled;
+
+extern float Chat_Spammer_Interval;
+
+extern char Chat_Spammer_Message[128];
+
+extern bool World_Enabled;
+
+extern bool World_Nightmode;
+
+extern bool World_Sky_Color_Enabled;
+
+extern float World_Sky_Color[4];
+
+extern bool World_World_Color_Enabled;
+
+extern float World_World_Color[4];
+
+extern bool World_Fullbright_Enabled;
+
+extern bool World_Full_Flashlight_Enabled;
+
+extern float World_Flashlight_Fov;
+
+extern bool World_No_Fog_Enabled;
+
+extern bool World_Custom_Fog_Enabled;
+
+extern bool World_Blend_Fog_Enabled;
+
+extern bool World_Fog_Rainbow_Enabled;
+
+extern float World_Fog_Rainbow_Speed;
+
+extern float World_Fog_Primary_Color[4];
+
+extern float World_Fog_Secondary_Color[4];
+
+extern float World_Fog_Start;
+
+extern float World_Fog_End;
+
+extern float World_Fog_Density;
 
 const unsigned __int32 Local_Player_Offset = 7498712;
 

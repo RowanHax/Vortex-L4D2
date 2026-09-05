@@ -99,6 +99,27 @@ static Client_Class_Structure* Get_Client_Class(void* Entity)
 	}
 }
 
+static Client_Class_Structure* Get_Client_Class_Fast(void* Entity)
+{
+	if (Entity == nullptr)
+	{
+		return nullptr;
+	}
+
+	void* Networkable = (void*)((unsigned __int8*)Entity + 0x8);
+
+	void** Vtable = *(void***)Networkable;
+
+	if ((Vtable == nullptr) || (Vtable[1] == nullptr) || (Sdk_Address_In_Module(Client_Module, (unsigned __int32)Vtable[1]) == false))
+	{
+		return nullptr;
+	}
+
+	const Get_Client_Class_Type Get_Client_Class_Fn = (Get_Client_Class_Type)Vtable[1];
+
+	return Get_Client_Class_Fn(Networkable, nullptr);
+}
+
 static __int32 Find_Recv_Prop(Recv_Table_Structure* Table, const char* Prop_Name, __int32 Extra_Offset, __int32 Depth = 0)
 {
 	__try
@@ -176,33 +197,6 @@ static Client_Class_Structure* Get_Client_Class_Chain()
 
 						if ((Head != nullptr) && (Sdk_Is_Readable_Range(Head, sizeof(Client_Class_Structure)) == true) && (Head->Next != nullptr))
 						{
-							static __int32 Chain_Logged = 0;
-
-							if (Chain_Logged == 0)
-							{
-								Chain_Logged = 1;
-
-								__int32 Count = 0;
-
-
-								for (Client_Class_Structure* Class = Head; (Class != nullptr) && (Count < 4096); Class = Class->Next)
-								{
-									if (Sdk_Is_Readable_Range(Class, sizeof(Client_Class_Structure)) == false)
-									{
-										break;
-									}
-
-									Count++;
-
-									if ((Class->Network_Name != nullptr) && ((strstr(Class->Network_Name, "Terror") != nullptr) || (strstr(Class->Network_Name, "Player") != nullptr) || (strstr(Class->Network_Name, "World") != nullptr)))
-									{
-										const char* Table_Name = (Class->Recv_Table != nullptr) ? Class->Recv_Table->Table_Name : "?";
-
-									}
-								}
-
-							}
-
 							return Head;
 						}
 					}
@@ -665,6 +659,52 @@ static bool Sdk_Read_Entity_Ghost(void* Entity, unsigned __int8& Ghost)
 	{
 		return false;
 	}
+}
+
+static bool Sdk_Read_Entity_Basic_Fast(void* Entity, __int32& Team, __int32& Health, unsigned __int8& Dead)
+{
+	if (Entity == nullptr)
+	{
+		return false;
+	}
+
+	Team = *(__int32*)((unsigned __int8*)Entity + 0xE4);
+	Health = *(__int32*)((unsigned __int8*)Entity + 0xEC);
+	Dead = *(unsigned __int8*)((unsigned __int8*)Entity + 0x147);
+	return true;
+}
+
+static bool Sdk_Read_Entity_Ghost_Fast(void* Entity, unsigned __int8& Ghost)
+{
+	if (Entity == nullptr)
+	{
+		return false;
+	}
+
+	Ghost = *(unsigned __int8*)((unsigned __int8*)Entity + 7322);
+	return true;
+}
+
+static bool Sdk_Read_Origin_Fast(void* Entity, float Out[3])
+{
+	if ((Entity == nullptr) || (Out == nullptr))
+	{
+		return false;
+	}
+
+	const float* Origin = (const float*)((unsigned __int8*)Entity + 0x124);
+
+	for (__int32 Axis = 0; Axis < 3; Axis++)
+	{
+		if ((Origin[Axis] != Origin[Axis]) || (fabsf(Origin[Axis]) > 1000000.f))
+		{
+			return false;
+		}
+
+		Out[Axis] = Origin[Axis];
+	}
+
+	return true;
 }
 
 static bool Sdk_Is_Entity_Usable(void* Entity)
@@ -1415,6 +1455,54 @@ static const char* Get_Kind_Name(__int32 Kind)
 	}
 
 	return "Invalid";
+}
+
+static __int32 Get_Entity_Kind_Fast(void* Entity)
+{
+	Client_Class_Structure* Class = Get_Client_Class_Fast(Entity);
+
+	if (Class == nullptr)
+	{
+		return Kind_Invalid;
+	}
+
+	const char* Name = Class->Network_Name;
+
+	if (Name == nullptr)
+	{
+		return Kind_Invalid;
+	}
+
+	if (_stricmp(Name, "CTerrorPlayer") == 0) return Kind_Survivor;
+
+	if (_stricmp(Name, "SurvivorBot") == 0) return Kind_Survivor;
+
+	if (_stricmp(Name, "Boomer") == 0) return Kind_Boomer;
+
+	if (_stricmp(Name, "Smoker") == 0) return Kind_Smoker;
+
+	if (_stricmp(Name, "Hunter") == 0) return Kind_Hunter;
+
+	if (_stricmp(Name, "Spitter") == 0) return Kind_Spitter;
+
+	if (_stricmp(Name, "Jockey") == 0) return Kind_Jockey;
+
+	if (_stricmp(Name, "Charger") == 0) return Kind_Charger;
+
+	if (_stricmp(Name, "Tank") == 0) return Kind_Tank;
+
+	if (_stricmp(Name, "Witch") == 0) return Kind_Witch;
+
+	if (_stricmp(Name, "Infected") == 0) return Kind_Common;
+
+	if ((strstr(Name, "Infected") != nullptr) || (strstr(Name, "Common") != nullptr) || (strstr(Name, "Zombie") != nullptr))
+	{
+		return Kind_Common;
+	}
+
+	if (_stricmp(Name, "TankRock") == 0) return Kind_Rock;
+
+	return Kind_Invalid;
 }
 
 static __int32 Get_Entity_Kind(void* Entity)

@@ -605,9 +605,9 @@ static bool Vortex_Read_Hitbox(void* Studio_Hdr, float Bone_Matrix[128][3][4], _
 	}
 }
 
-static bool Vortex_Get_Aim_Position(void* Entity, __int32 Kind, __int32 Chest, float Out[3])
+static bool Vortex_Get_Aim_Position(void* Entity, __int32 Kind, __int32 Chest, const float Fallback_Origin[3], float Out[3])
 {
-	if ((Entity == nullptr) || (Out == nullptr))
+	if ((Entity == nullptr) || (Fallback_Origin == nullptr) || (Out == nullptr))
 	{
 		return false;
 	}
@@ -637,17 +637,10 @@ static bool Vortex_Get_Aim_Position(void* Entity, __int32 Kind, __int32 Chest, f
 			}
 		}
 
-		float Origin[3];
-
-		if (Sdk_Get_Origin_Safe(Entity, Origin) == false)
-		{
-			return false;
-		}
-
 		const float Height = Vortex_Get_Aim_Height(Kind, Chest);
-		Out[0] = Origin[0];
-		Out[1] = Origin[1];
-		Out[2] = Origin[2] + Height;
+		Out[0] = Fallback_Origin[0];
+		Out[1] = Fallback_Origin[1];
+		Out[2] = Fallback_Origin[2] + Height;
 
 		return (Out[0] == Out[0]) && (Out[1] == Out[1]) && (Out[2] == Out[2]) && (fabsf(Out[0]) < 1000000.f) && (fabsf(Out[1]) < 1000000.f) && (fabsf(Out[2]) < 1000000.f);
 	}
@@ -779,6 +772,7 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 		float Best_Aim[3] = { 0.f, 0.f, 0.f };
 		float Best_Target_Origin[3] = { 0.f, 0.f, 0.f };
 		__int32 Best_Target_Priority = -1;
+		__int32 Best_Target_Kind = Kind_Invalid;
 		void* Best_Target = nullptr;
 		bool Refresh_Target = true;
 		const unsigned __int32 Now = GetTickCount();
@@ -932,10 +926,8 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 
 			__int32 Team = 0;
 			__int32 Health = 0;
-			unsigned __int8 Dead = 0;
-
-			if ((Sdk_Read_Entity_Basic(Entity, Team, Health, Dead) == false) || (Dead != 0) || (Health <= 0))
-			continue;
+			unsigned __int8 Dead = 0;			if ((Sdk_Read_Entity_Basic_Fast(Entity, Team, Health, Dead) == false) || (Dead != 0) || (Health <= 0))
+				continue;
 
 			if ((Team != 2) && (Team != 3))
 			continue;
@@ -947,11 +939,11 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 			{
 				unsigned __int8 Ghost = 0;
 
-				if ((Sdk_Read_Entity_Ghost(Entity, Ghost) == false) || (Ghost != 0))
+				if ((Sdk_Read_Entity_Ghost_Fast(Entity, Ghost) == false) || (Ghost != 0))
 					continue;
 			}
 
-			const __int32 Kind = Get_Entity_Kind(Entity);
+			const __int32 Kind = Get_Entity_Kind_Fast(Entity);
 
 			if ((Kind == Kind_Invalid) || (Kind == 10))
 				continue;
@@ -966,7 +958,7 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 
 			float Origin[3];
 
-			if (Sdk_Get_Origin_Safe(Entity, Origin) == false)
+			if (Sdk_Read_Origin_Fast(Entity, Origin) == false)
 				continue;
 			
 			const float Distance_X = Origin[0] - Local_Origin[0];
@@ -997,52 +989,63 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 				continue;
 			}
 
-			float Target_Position[3];
-
-			if (Vortex_Get_Aim_Position(Entity, Kind, (Vortex_Aimbot_Hitbox == 1) ? 1 : 0, Target_Position) == false)
-				continue;
-
-			Vortex_Apply_Prediction(Entity, Target_Position);
-
-			for (__int32 Axis = 0; Axis < 3; Axis++)
-			{
-				if ((Target_Position[Axis] != Target_Position[Axis]) || (fabsf(Target_Position[Axis]) > 1000000.f))
-				{
-					Target_Position[0] = 0.f;
-					Target_Position[1] = 0.f;
-					Target_Position[2] = 0.f;
-					break;
-				}
-			}
-
-			if ((Target_Position[0] == 0.f) && (Target_Position[1] == 0.f) && (Target_Position[2] == 0.f))
-				continue;
-
-			float Aim_Angles[2];
-			Vortex_Calculate_Aim(Eye, Target_Position, Aim_Angles);
-
-			const float Fov = Vortex_Angles_Field_Of_View(View_Angles, Aim_Angles);
-			const float Distance = sqrtf(
-				(Origin[0] - Local_Origin[0]) * (Origin[0] - Local_Origin[0]) +
-				(Origin[1] - Local_Origin[1]) * (Origin[1] - Local_Origin[1]) +
-				(Origin[2] - Local_Origin[2]) * (Origin[2] - Local_Origin[2]));
-
-			if ((Fov <= Vortex_Aimbot_Fov) && (Distance <= Safe_Distance_Limit) &&
+			if ((Rough_Fov <= (Vortex_Aimbot_Fov + 5.f)) &&
 				((Candidate_Priority > Best_Target_Priority) ||
-				 ((Candidate_Priority == Best_Target_Priority) && (Fov < Min_Fov))) &&
-				((Vortex_Aimbot_Visible == false) || (Vortex_Is_Visible(Local_Player, Entity, Eye, Target_Position) == true)))
+				 ((Candidate_Priority == Best_Target_Priority) && (Rough_Fov < Min_Fov))) &&
+				((Vortex_Aimbot_Visible == false) || (Vortex_Is_Visible(Local_Player, Entity, Eye, Rough_Position) == true)))
 			{
-				Min_Fov = Fov;
+				Min_Fov = Rough_Fov;
 				Best_Target_Priority = Candidate_Priority;
 				Best_Target = Entity;
+				Best_Target_Kind = Kind;
 				Best_Target_Origin[0] = Origin[0];
 				Best_Target_Origin[1] = Origin[1];
 				Best_Target_Origin[2] = Origin[2];
-				Best_Aim[0] = Target_Position[0];
-				Best_Aim[1] = Target_Position[1];
-				Best_Aim[2] = Target_Position[2];
+				Best_Aim[0] = Rough_Position[0];
+				Best_Aim[1] = Rough_Position[1];
+				Best_Aim[2] = Rough_Position[2];
 			}
 		}
+		}
+
+		if (Best_Target != nullptr)
+		{
+			float Target_Position[3];
+
+			if (Vortex_Get_Aim_Position(Best_Target, Best_Target_Kind, (Vortex_Aimbot_Hitbox == 1) ? 1 : 0, Best_Target_Origin, Target_Position) == true)
+			{
+				Vortex_Apply_Prediction(Best_Target, Target_Position);
+
+				__int32 Axis = 0;
+
+				while (Axis < 3)
+				{
+					if ((Target_Position[Axis] != Target_Position[Axis]) || (fabsf(Target_Position[Axis]) > 1000000.f))
+					{
+						break;
+					}
+
+					Axis++;
+				}
+
+				if (Axis != 3)
+				{
+					Target_Position[0] = Best_Aim[0];
+					Target_Position[1] = Best_Aim[1];
+					Target_Position[2] = Best_Aim[2];
+				}
+
+				float Aim_Angles[2];
+
+				Vortex_Calculate_Aim(Eye, Target_Position, Aim_Angles);
+
+				if (Vortex_Angles_Field_Of_View(View_Angles, Aim_Angles) <= Vortex_Aimbot_Fov)
+				{
+					Best_Aim[0] = Target_Position[0];
+					Best_Aim[1] = Target_Position[1];
+					Best_Aim[2] = Target_Position[2];
+				}
+			}
 		}
 
 		if (Refresh_Target == true)
@@ -1056,7 +1059,7 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 				Vortex_Cached_Aim[0] = Best_Aim[0];
 				Vortex_Cached_Aim[1] = Best_Aim[1];
 				Vortex_Cached_Aim[2] = Best_Aim[2];
-				Vortex_Cached_Target_Kind = Get_Entity_Kind(Best_Target);
+				Vortex_Cached_Target_Kind = Best_Target_Kind;
 				Vortex_Cached_Target_Priority = Best_Target_Priority;
 				Vortex_Cached_At = Now;
 				Vortex_Cached_Generation = Sdk_Get_Game_Session_Generation();
@@ -1082,7 +1085,7 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 			}
 		}
 
-		if ((Min_Fov > Vortex_Aimbot_Fov) || (Best_Target_Priority < 0))
+		if ((Min_Fov > (Vortex_Aimbot_Fov + 5.f)) || (Best_Target_Priority < 0))
 			return;
 
 		float Aim_Angles[2];

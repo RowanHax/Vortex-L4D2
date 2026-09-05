@@ -18,6 +18,12 @@
 
 #include "Hitmarker.hpp"
 
+#include "AntiAim.hpp"
+
+#include "ChatSpammer.hpp"
+
+#include "World.hpp"
+
 typedef bool(__fastcall* CreateMove_Type)(void* Ecx, void* Edx, float Input_Sample_Frametime, UserCmd_Structure* Command);
 
 extern CreateMove_Type Original_CreateMove;
@@ -102,14 +108,6 @@ static void __fastcall Calc_View_Hook(void* Ecx, void* Edx, void* Eye_Origin, vo
 					float* Saved = Punch_Getter(Ecx, nullptr);
 
 					float* Punch = (float*)((unsigned __int32)Ecx + Calc_View_Punch_Offset);
-
-					static bool Logged = false;
-
-					if (Logged == false)
-					{
-						Logged = true;
-
-					}
 
 					const float Old[3] = { Saved[0], Saved[1], Saved[2] };
 
@@ -198,34 +196,14 @@ static void Install_Calc_View_Hook()
 
 static bool __fastcall Override_View_Hook(void* Ecx, void* Edx, void* View_Setup)
 {
-
 	if (No_Visual_Recoil_Enabled == true)
 	{
-		const unsigned __int32 Local_Player = Get_Local_Player();
-
-		static __int32 Punch_Offset = -1;
-
-		if (Punch_Offset == -1)
-		{
-			Punch_Offset = Get_Net_Prop_Offset("DT_BasePlayer", "m_vecPunchAngle");
-		}
-
-		static bool Logged = false;
-
-		if ((View_Setup != nullptr) && (Local_Player != 0) && (Punch_Offset >= 0) && (Logged == false))
-		{
-			Logged = true;
-
-			const float* Angles = (const float*)((unsigned __int32)View_Setup + 0x48);
-
-			const float* Punch = (const float*)(Local_Player + Punch_Offset);
-
-		}
-
 		No_Visual_Recoil_Zero_Punch();
 	}
 
 	const bool Result = Original_Override_View(Ecx, Edx, View_Setup);
+
+	World_Update_Fog();
 
 	if (No_Visual_Recoil_Enabled == true)
 	{
@@ -277,6 +255,8 @@ static bool __fastcall CreateMove_Hook(void* Ecx, void* Edx, float Input_Sample_
 		}
 	}
 
+	Update_Anti_Aim(Command);
+
 	Update_Vortex_Aimbot(Command);
 
 	Update_Auto_Pistol(Command);
@@ -285,6 +265,8 @@ static bool __fastcall CreateMove_Hook(void* Ecx, void* Edx, float Input_Sample_
 
 	Update_Hitmarker(Command);
 
+	Update_Chat_Spammer();
+
 	if (No_Visual_Recoil_Enabled == true)
 	{
 		No_Visual_Recoil_Zero_Punch();
@@ -292,7 +274,9 @@ static bool __fastcall CreateMove_Hook(void* Ecx, void* Edx, float Input_Sample_
 
 	Air_Stuck_Apply(Command);
 
-	if ((Command != nullptr) && ((Vortex_Aimbot_Enabled == true) && (Vortex_Aimbot_Silent == true)))
+	if ((Command != nullptr) &&
+		(((Vortex_Aimbot_Enabled == true) && (Vortex_Aimbot_Silent == true)) ||
+		 ((Anti_Aim_Enabled == true) && (Anti_Aim_Silent == true))))
 	{
 		return false;
 	}

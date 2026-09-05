@@ -304,10 +304,14 @@ static void Update_Esp()
 		{
 			Esp_Tracked_Count = 0;
 
+			Esp_Updated_At = Now;
+
 			const __int32 Max_Entities = min(Sdk_Get_Max_Entities_Safe(), 2048);
 
 			for (__int32 Slot = 1; (Slot < Max_Entities) && (Esp_Tracked_Count < Esp_Max_Tracked); Slot++)
 			{
+				__try
+				{
 				void* Entity = Sdk_Get_Client_Entity_Safe(Slot);
 
 				if ((Entity == nullptr) || (Entity == Local_Player))
@@ -326,7 +330,7 @@ static void Update_Esp()
 					continue;
 				}
 
-				const __int32 Kind = Get_Entity_Kind(Entity);
+				const __int32 Kind = Get_Entity_Kind_Fast(Entity);
 
 				if (Kind == Kind_Invalid)
 				{
@@ -348,9 +352,13 @@ static void Update_Esp()
 				Entry.Slot = Slot;
 				Entry.Kind = Kind;
 				Entry.In_Use = true;
+				}
+				__except (EXCEPTION_EXECUTE_HANDLER)
+				{
+					continue;
+				}
 			}
 
-			Esp_Updated_At = Now;
 			Esp_Valid = true;
 		}
 
@@ -398,6 +406,8 @@ static void Update_Esp()
 
 		for (__int32 i = 0; i < Esp_Tracked_Count; i++)
 		{
+			__try
+			{
 			const Esp_Tracked_Entity& Entry = Esp_Tracked[i];
 
 			void* Entity = Sdk_Get_Client_Entity_Safe(Entry.Slot);
@@ -534,10 +544,17 @@ static void Update_Esp()
 
 				Draw_List->AddText(ImVec2(X, Y - 14.f), Box_Color, Text);
 			}
+			}
+			__except (EXCEPTION_EXECUTE_HANDLER)
+			{
+				continue;
+			}
 		}
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
 		Esp_Reset_Tracked();
+
+		Esp_Updated_At = GetTickCount();
 	}
 }

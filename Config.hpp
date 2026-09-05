@@ -44,15 +44,11 @@ static Config_Entry Config_Table[] =
 
 	{ "Esp_Team3_Color", (void*)Esp_Team3_Color, 3 },
 
-	{ "Watermark_Enabled", (void*)&Watermark_Enabled, 0 },
-
 	{ "No_Vomit_Enabled", (void*)&No_Vomit_Enabled, 0 },
 
 	{ "Chat_Spy_Enabled", (void*)&Chat_Spy_Enabled, 1 },
 
 	{ "Chat_Spy_Method", (void*)&Chat_Spy_Method, 0 },
-
-	{ "Mods_Online_Enabled", (void*)&Mods_Online_Enabled, 0 },
 
 	{ "Chams_Enabled", (void*)&Chams_Enabled, 0 },
 
@@ -118,6 +114,94 @@ static Config_Entry Config_Table[] =
 
 	{ "Charger_Turn_Enabled", (void*)&Charger_Turn_Enabled, 0 },
 
+	{ "Safe_Room_TP_Enabled", (void*)&Safe_Room_TP_Enabled, 0 },
+
+	{ "Safe_Room_TP_Key", (void*)&Safe_Room_TP_Key, 1 },
+
+	{ "Scope_Bypass_Enabled", (void*)&Scope_Bypass_Enabled, 0 },
+
+	{ "Hitmarker_Enabled", (void*)&Hitmarker_Enabled, 0 },
+
+	{ "Item_Esp_Enabled", (void*)&Item_Esp_Enabled, 0 },
+
+	{ "Item_Esp_Weapons_Text", (void*)&Item_Esp_Weapons_Text, 0 },
+
+	{ "Item_Esp_Weapons_Boxes", (void*)&Item_Esp_Weapons_Boxes, 0 },
+
+	{ "Item_Esp_Weapons_Color", (void*)Item_Esp_Weapons_Color, 3 },
+
+	{ "Item_Esp_Heal_Enabled", (void*)&Item_Esp_Heal_Enabled, 0 },
+
+	{ "Item_Esp_Heal_Text", (void*)&Item_Esp_Heal_Text, 0 },
+
+	{ "Item_Esp_Heal_Boxes", (void*)&Item_Esp_Heal_Boxes, 0 },
+
+	{ "Item_Esp_Heal_Color", (void*)Item_Esp_Heal_Color, 3 },
+
+	{ "Item_Esp_Mounted_Enabled", (void*)&Item_Esp_Mounted_Enabled, 0 },
+
+	{ "Item_Esp_Mounted_Text", (void*)&Item_Esp_Mounted_Text, 0 },
+
+	{ "Item_Esp_Mounted_Boxes", (void*)&Item_Esp_Mounted_Boxes, 0 },
+
+	{ "Item_Esp_Mounted_Color", (void*)Item_Esp_Mounted_Color, 3 },
+
+	{ "Anti_Aim_Enabled", (void*)&Anti_Aim_Enabled, 0 },
+
+	{ "Anti_Aim_Silent", (void*)&Anti_Aim_Silent, 0 },
+
+	{ "Anti_Aim_Yaw_Mode", (void*)&Anti_Aim_Yaw_Mode, 1 },
+
+	{ "Anti_Aim_Yaw_Value", (void*)&Anti_Aim_Yaw_Value, 2 },
+
+	{ "Anti_Aim_Pitch_Mode", (void*)&Anti_Aim_Pitch_Mode, 1 },
+
+	{ "Anti_Aim_Pitch_Value", (void*)&Anti_Aim_Pitch_Value, 2 },
+
+	{ "Chat_Spammer_Enabled", (void*)&Chat_Spammer_Enabled, 0 },
+
+	{ "Chat_Spammer_Interval", (void*)&Chat_Spammer_Interval, 2 },
+
+	{ "Chat_Spammer_Message", (void*)Chat_Spammer_Message, 4 },
+
+	{ "World_Enabled", (void*)&World_Enabled, 0 },
+
+	{ "World_Nightmode", (void*)&World_Nightmode, 0 },
+
+	{ "World_Sky_Color_Enabled", (void*)&World_Sky_Color_Enabled, 0 },
+
+	{ "World_Sky_Color", (void*)World_Sky_Color, 3 },
+
+	{ "World_World_Color_Enabled", (void*)&World_World_Color_Enabled, 0 },
+
+	{ "World_World_Color", (void*)World_World_Color, 3 },
+
+	{ "World_Fullbright_Enabled", (void*)&World_Fullbright_Enabled, 0 },
+
+	{ "World_Full_Flashlight_Enabled", (void*)&World_Full_Flashlight_Enabled, 0 },
+
+	{ "World_Flashlight_Fov", (void*)&World_Flashlight_Fov, 2 },
+
+	{ "World_No_Fog_Enabled", (void*)&World_No_Fog_Enabled, 0 },
+
+	{ "World_Custom_Fog_Enabled", (void*)&World_Custom_Fog_Enabled, 0 },
+
+	{ "World_Blend_Fog_Enabled", (void*)&World_Blend_Fog_Enabled, 0 },
+
+	{ "World_Fog_Rainbow_Enabled", (void*)&World_Fog_Rainbow_Enabled, 0 },
+
+	{ "World_Fog_Rainbow_Speed", (void*)&World_Fog_Rainbow_Speed, 2 },
+
+	{ "World_Fog_Primary_Color", (void*)World_Fog_Primary_Color, 3 },
+
+	{ "World_Fog_Secondary_Color", (void*)World_Fog_Secondary_Color, 3 },
+
+	{ "World_Fog_Start", (void*)&World_Fog_Start, 2 },
+
+	{ "World_Fog_End", (void*)&World_Fog_End, 2 },
+
+	{ "World_Fog_Density", (void*)&World_Fog_Density, 2 },
+
 };
 
 static const __int32 Config_Entry_Count = sizeof(Config_Table) / sizeof(Config_Table[0]);
@@ -156,6 +240,10 @@ static bool Save_Config(const char* Name)
 		else if (Entry.Type == 2)
 		{
 			fprintf(File, "%s = %f\n", Entry.Name, *(float*)Entry.Address);
+		}
+		else if (Entry.Type == 4)
+		{
+			fprintf(File, "%s = %s\n", Entry.Name, (const char*)Entry.Address);
 		}
 		else
 		{
@@ -253,6 +341,17 @@ static bool Load_Config(const char* Name)
 				sscanf_s(Line, "%*s = %f", &Value);
 
 				*(float*)Entry.Address = Value;
+			}
+			else if (Entry.Type == 4)
+			{
+				char* Text = (char*)Entry.Address;
+
+				char Value[128];
+
+				if (sscanf_s(Line, "%*s = %127[^\r\n]", Value, (unsigned)sizeof(Value)) == 1)
+				{
+					strncpy_s(Text, 128, Value, 127);
+				}
 			}
 			else
 			{

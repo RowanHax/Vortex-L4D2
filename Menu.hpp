@@ -103,11 +103,13 @@ static void Setup_Menu_Style()
 
 static __int32 Current_Tab = 0;
 
-static const struct { const char* Label; int Group; __int32 Tab; } Sidebar_Entries[7] =
+static const struct { const char* Label; int Group; __int32 Tab; } Sidebar_Entries[9] =
 {
 	{ "Aimbot",         0, 0 },
+	{ "Anti-Aim",       0, 7 },
 	{ "ESP",            1, 1 },
 	{ "Chams",          1, 2 },
+	{ "World",          1, 8 },
 	{ "Exploits",       2, 3 },
 	{ "Misc",           2, 4 },
 	{ "Configs",        3, 5 },
@@ -170,27 +172,29 @@ static void Show_Sidebar()
 	DL->AddCircleFilled(Center, 4.f, M_U32(0xE8, 0xE8, 0xE8), 16);
 
 	ImGui::SetCursorPos(ImVec2(0.f, 108.f));
-	Sidebar_Group_Label("Aimbot");
+	Sidebar_Group_Label("Aim");
 
 	ImGui::SetCursorPosY(128.f); Sidebar_Entry(0);
+	ImGui::SetCursorPosY(154.f); Sidebar_Entry(1);
 
-	ImGui::SetCursorPos(ImVec2(0.f, 168.f));
+	ImGui::SetCursorPos(ImVec2(0.f, 190.f));
 	Sidebar_Group_Label("Visuals");
 
-	ImGui::SetCursorPosY(188.f); Sidebar_Entry(1);
-	ImGui::SetCursorPosY(214.f); Sidebar_Entry(2);
+	ImGui::SetCursorPosY(210.f); Sidebar_Entry(2);
+	ImGui::SetCursorPosY(236.f); Sidebar_Entry(3);
+	ImGui::SetCursorPosY(262.f); Sidebar_Entry(4);
 
-	ImGui::SetCursorPos(ImVec2(0.f, 258.f));
+	ImGui::SetCursorPos(ImVec2(0.f, 306.f));
 	Sidebar_Group_Label("Miscellaneous");
 
-	ImGui::SetCursorPosY(278.f); Sidebar_Entry(3);
-	ImGui::SetCursorPosY(304.f); Sidebar_Entry(4);
+	ImGui::SetCursorPosY(326.f); Sidebar_Entry(5);
+	ImGui::SetCursorPosY(352.f); Sidebar_Entry(6);
 
-	ImGui::SetCursorPos(ImVec2(0.f, 348.f));
+	ImGui::SetCursorPos(ImVec2(0.f, 396.f));
 	Sidebar_Group_Label("System");
 
-	ImGui::SetCursorPosY(368.f); Sidebar_Entry(5);
-	ImGui::SetCursorPosY(394.f); Sidebar_Entry(6);
+	ImGui::SetCursorPosY(416.f); Sidebar_Entry(7);
+	ImGui::SetCursorPosY(442.f); Sidebar_Entry(8);
 
 	{
 		const float Strip_Y = ImGui::GetWindowHeight() - 42.f;
@@ -340,10 +344,104 @@ static void Show_Tab_Vortex()
 	End_Mini_Panel();
 }
 
-static void Show_Tab_Visuals()
+static void Show_Tab_AntiAim()
 {
 	float Cell_W, Cell_H, Gap;
 	Panel_Grid_Size(Cell_W, Cell_H, Gap);
+
+	Panel_Pos(0.f, 0.f, Cell_W, Cell_H, Gap);
+	Begin_Mini_Panel("MP_AntiAim_Main", "Anti-Aim", Cell_W, Cell_H);
+	ImGui::Checkbox("Enable", &Anti_Aim_Enabled);
+	ImGui::BeginDisabled(Anti_Aim_Enabled == false);
+	ImGui::Checkbox("Silent", &Anti_Aim_Silent);
+	ImGui::Text("Yaw mode");
+	ImGui::SameLine();
+	ImGui::Combo("##YawMode", &Anti_Aim_Yaw_Mode, "Off\0Static\0Backwards\0Fake Backwards\0Fake Sideways\0Spin\0Jitter\0", 7);
+	Red_Border_On_Focus();
+	ImGui::SliderFloat("Yaw amount", &Anti_Aim_Yaw_Value, 1.f, 180.f, "%.0f");
+	Red_Border_On_Focus();
+	ImGui::Text("Pitch mode");
+	ImGui::SameLine();
+	ImGui::Combo("##PitchMode", &Anti_Aim_Pitch_Mode, "Off\0Up\0Down\0Jitter\0", 4);
+	Red_Border_On_Focus();
+	ImGui::SliderFloat("Pitch amount", &Anti_Aim_Pitch_Value, 1.f, 89.f, "%.0f");
+	Red_Border_On_Focus();
+	ImGui::EndDisabled();
+	End_Mini_Panel();
+
+	Panel_Pos(1.f, 0.f, Cell_W, Cell_H, Gap);
+	Begin_Mini_Panel("MP_AntiAim_Info", "Info", Cell_W, Cell_H);
+	ImGui::TextColored(M_Color(0x80, 0x80, 0x88), "Note that its kinda buggy and might do weird things.");
+	End_Mini_Panel();
+}
+
+static void Show_Tab_World()
+{
+	float Cell_W, Cell_H, Gap;
+	Panel_Grid_Size(Cell_W, Cell_H, Gap);
+
+	Panel_Pos(0.f, 0.f, Cell_W, Cell_H, Gap);
+	Begin_Mini_Panel("MP_World_Fog", "Fog", Cell_W, Cell_H);
+	ImGui::Checkbox("Enable World", &World_Enabled);
+	ImGui::BeginDisabled(World_Enabled == false);
+	ImGui::Checkbox("No Fog", &World_No_Fog_Enabled);
+	ImGui::Checkbox("Custom Fog", &World_Custom_Fog_Enabled);
+	ImGui::BeginDisabled(World_Custom_Fog_Enabled == false);
+	ImGui::Checkbox("Blend Fog", &World_Blend_Fog_Enabled);
+	ImGui::Checkbox("Rainbow Fog", &World_Fog_Rainbow_Enabled);
+	ImGui::BeginDisabled(World_Fog_Rainbow_Enabled == false);
+	ImGui::SliderFloat("Rainbow Speed", &World_Fog_Rainbow_Speed, 0.1f, 20.f, "%.1f");
+	Red_Border_On_Focus();
+	ImGui::EndDisabled();
+	ImGui::ColorEdit4("Primary Color", World_Fog_Primary_Color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoDragDrop);
+	ImGui::ColorEdit4("Secondary Color", World_Fog_Secondary_Color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoDragDrop);
+	ImGui::SliderFloat("Start", &World_Fog_Start, 0.f, 20000.f, "%.0f");
+	Red_Border_On_Focus();
+	ImGui::SliderFloat("End", &World_Fog_End, 100.f, 40000.f, "%.0f");
+	Red_Border_On_Focus();
+	ImGui::SliderFloat("Density", &World_Fog_Density, 0.f, 2.f, "%.2f");
+	Red_Border_On_Focus();
+	ImGui::EndDisabled();
+	ImGui::EndDisabled();
+	End_Mini_Panel();
+
+	Panel_Pos(1.f, 0.f, Cell_W, Cell_H, Gap);
+	Begin_Mini_Panel("MP_World_Sky", "Sky", Cell_W, Cell_H);
+	ImGui::BeginDisabled(World_Enabled == false);
+	ImGui::Checkbox("Nightmode", &World_Nightmode);
+	ImGui::Checkbox("Enable Sky Color", &World_Sky_Color_Enabled);
+	ImGui::BeginDisabled((World_Sky_Color_Enabled == false) || (World_Nightmode == true));
+	ImGui::ColorEdit4("Sky Color", World_Sky_Color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoDragDrop);
+	ImGui::EndDisabled();
+	ImGui::Checkbox("Enable World Color", &World_World_Color_Enabled);
+	ImGui::BeginDisabled((World_World_Color_Enabled == false) || (World_Nightmode == true));
+	ImGui::ColorEdit4("World Color", World_World_Color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoDragDrop);
+	ImGui::EndDisabled();
+	ImGui::EndDisabled();
+	End_Mini_Panel();
+
+	Panel_Pos(0.f, 1.f, Cell_W, Cell_H, Gap);
+	Begin_Mini_Panel("MP_World_Light", "Lighting", Cell_W, Cell_H);
+	ImGui::BeginDisabled(World_Enabled == false);
+	ImGui::Checkbox("FullBright", &World_Fullbright_Enabled);
+	ImGui::Checkbox("Full Flashlight", &World_Full_Flashlight_Enabled);
+	ImGui::BeginDisabled(World_Full_Flashlight_Enabled == false);
+	ImGui::SliderFloat("Flashlight FOV", &World_Flashlight_Fov, 45.f, 180.f, "%.0f");
+	Red_Border_On_Focus();
+	ImGui::EndDisabled();
+	ImGui::EndDisabled();
+	End_Mini_Panel();
+
+	Panel_Pos(1.f, 1.f, Cell_W, Cell_H, Gap);
+	Begin_Mini_Panel("MP_World_Info", "Info", Cell_W, Cell_H);
+	ImGui::TextColored(M_Color(0x80, 0x80, 0x88), "This can make fps loss on shit pc.");
+	End_Mini_Panel();
+}
+
+static void Show_Tab_Visuals()
+{
+	float Cell_W, Cell_H, Gap;
+	Panel_Grid_Size(Cell_W, Cell_H, Gap, 3.f);
 
 	Panel_Pos(0.f, 0.f, Cell_W, Cell_H, Gap);
 	Begin_Mini_Panel("MP_Visuals_Esp", "ESP", Cell_W, Cell_H);
@@ -368,6 +466,44 @@ static void Show_Tab_Visuals()
 	ImGui::ColorEdit4("Survivors", Esp_Team2_Color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoDragDrop);
 	ImGui::ColorEdit4("Infected",  Esp_Team3_Color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoDragDrop);
 	End_Mini_Panel();
+
+	Panel_Pos(0.f, 1.f, Cell_W, Cell_H, Gap);
+	Begin_Mini_Panel("MP_Visuals_Items", "Items", Cell_W, Cell_H);
+	ImGui::Checkbox("Enable", &Item_Esp_Enabled);
+	ImGui::BeginDisabled(Item_Esp_Enabled == false);
+	ImGui::Checkbox("Weapon spawns text", &Item_Esp_Weapons_Text);
+	ImGui::SameLine();
+	ImGui::Checkbox("Boxes", &Item_Esp_Weapons_Boxes);
+	ImGui::ColorEdit4("Weapon spawns", Item_Esp_Weapons_Color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoDragDrop);
+	ImGui::EndDisabled();
+	End_Mini_Panel();
+
+	Panel_Pos(1.f, 1.f, Cell_W, Cell_H, Gap);
+	Begin_Mini_Panel("MP_Visuals_Heal", "Heal Items", Cell_W, Cell_H);
+	ImGui::Checkbox("Enable", &Item_Esp_Heal_Enabled);
+	ImGui::BeginDisabled(Item_Esp_Heal_Enabled == false);
+	ImGui::Checkbox("Text", &Item_Esp_Heal_Text);
+	ImGui::SameLine();
+	ImGui::Checkbox("Boxes", &Item_Esp_Heal_Boxes);
+	ImGui::ColorEdit4("Heal items", Item_Esp_Heal_Color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoDragDrop);
+	ImGui::EndDisabled();
+	End_Mini_Panel();
+
+	Panel_Pos(0.f, 2.f, Cell_W, Cell_H, Gap);
+	Begin_Mini_Panel("MP_Visuals_Mounted", "Mounted Weapons", Cell_W, Cell_H);
+	ImGui::Checkbox("Enable", &Item_Esp_Mounted_Enabled);
+	ImGui::BeginDisabled(Item_Esp_Mounted_Enabled == false);
+	ImGui::Checkbox("Text", &Item_Esp_Mounted_Text);
+	ImGui::SameLine();
+	ImGui::Checkbox("Boxes", &Item_Esp_Mounted_Boxes);
+	ImGui::ColorEdit4("Mounted", Item_Esp_Mounted_Color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoDragDrop);
+	ImGui::TextColored(M_Color(0x80, 0x80, 0x88), "Shows heat value when available.");
+	ImGui::EndDisabled();
+	End_Mini_Panel();
+
+	Panel_Pos(1.f, 2.f, Cell_W, Cell_H, Gap);
+	Begin_Mini_Panel("MP_Visuals_Items_Info", "Info", Cell_W, Cell_H);
+	End_Mini_Panel();
 }
 
 static void Show_Tab_Exploits()
@@ -379,7 +515,7 @@ static void Show_Tab_Exploits()
 	Begin_Mini_Panel("MP_Exploits_Tick", "Rapid Fire", Cell_W, Cell_H);
 	ImGui::Checkbox("Enable", &Tick_Manipulation_Enabled);
 	ImGui::BeginDisabled(Tick_Manipulation_Enabled == false);
-	ImGui::SliderInt("Ticks", (int*)&Tick_Manipulation_Ticks, 1, 30);
+	ImGui::SliderInt("Ticks", (int*)&Tick_Manipulation_Ticks, 1, 100);
 	Red_Border_On_Focus();
 	ImGui::Checkbox("Interact", &Tick_Manipulation_Interact);
 	ImGui::EndDisabled();
@@ -387,10 +523,10 @@ static void Show_Tab_Exploits()
 	End_Mini_Panel();
 
 	Panel_Pos(0.f, 1.f, Cell_W, Cell_H, Gap);
-	Begin_Mini_Panel("MP_Exploits_Lag", "Lag Switch", Cell_W, Cell_H);
-	ImGui::Checkbox("Enable Lag Switch", &Lag_Exploit_Enabled);
+	Begin_Mini_Panel("MP_Exploits_Lag", "Lag Exploit", Cell_W, Cell_H);
+	ImGui::Checkbox("Enable Lag Exploit", &Lag_Exploit_Enabled);
 	ImGui::BeginDisabled(Lag_Exploit_Enabled == false);
-	ImGui::SliderInt("Lag Key", &Lag_Exploit_Key, 0, 255);
+	ImGui::SliderInt("Lag Key (0 = always)", &Lag_Exploit_Key, 0, 255);
 	Red_Border_On_Focus();
 	ImGui::SliderInt("Lag Value", &Lag_Exploit_Value, 10, 100000);
 	Red_Border_On_Focus();
@@ -407,23 +543,19 @@ static void Show_Tab_Exploits()
 	End_Mini_Panel();
 
 	Panel_Pos(1.f, 1.f, Cell_W, Cell_H, Gap);
-	Begin_Mini_Panel("MP_Exploits_Stuck", "Stuck", Cell_W, Cell_H);
+	Begin_Mini_Panel("MP_Exploits_Stuck", "Airstuck", Cell_W, Cell_H);
 	ImGui::Checkbox("Enable Air Stuck", &Air_Stuck_Enabled);
 	ImGui::BeginDisabled(Air_Stuck_Enabled == false);
 	ImGui::SliderInt("Air Stuck Key", &Air_Stuck_Key, 0, 255);
 	Red_Border_On_Focus();
 	ImGui::EndDisabled();
-	ImGui::Dummy(ImVec2(0.f, 4.f));
-	ImGui::Checkbox("Enable Charger Turn", &Charger_Turn_Enabled);
-	if (ImGui::IsItemDeactivatedAfterEdit())
-		Charger_Turn_Apply();
 	End_Mini_Panel();
 }
 
 static void Show_Tab_Misc()
 {
 	float Cell_W, Cell_H, Gap;
-	Panel_Grid_Size(Cell_W, Cell_H, Gap);
+	Panel_Grid_Size(Cell_W, Cell_H, Gap, 3.f);
 
 	Panel_Pos(0.f, 0.f, Cell_W, Cell_H, Gap);
 	Begin_Mini_Panel("MP_Misc_Movement", "Movement", Cell_W, Cell_H);
@@ -452,6 +584,24 @@ static void Show_Tab_Misc()
 	Begin_Mini_Panel("MP_Misc_Weapons", "Weapons", Cell_W, Cell_H);
 	ImGui::Checkbox("Auto Pistol", &Rapid_Fire_Enabled);
 	ImGui::Checkbox("No Visual Recoil", &No_Visual_Recoil_Enabled);
+	End_Mini_Panel();
+
+	Panel_Pos(0.f, 2.f, Cell_W, Cell_H, Gap);
+	Begin_Mini_Panel("MP_Misc_ChatSpammer", "Chat Spammer", Cell_W, Cell_H);
+	ImGui::Checkbox("Enable", &Chat_Spammer_Enabled);
+	ImGui::BeginDisabled(Chat_Spammer_Enabled == false);
+	ImGui::SliderFloat("Interval (s)", &Chat_Spammer_Interval, 1.0f, 60.f, "%.1f");
+	Red_Border_On_Focus();
+	ImGui::InputText("Message", Chat_Spammer_Message, sizeof(Chat_Spammer_Message));
+	Red_Border_On_Focus();
+	ImGui::EndDisabled();
+	End_Mini_Panel();
+
+	Panel_Pos(1.f, 2.f, Cell_W, Cell_H, Gap);
+	Begin_Mini_Panel("MP_Misc_Info", "Camera", Cell_W, Cell_H);
+	ImGui::Checkbox("Enable Charger Turn", &Charger_Turn_Enabled);
+	if (ImGui::IsItemDeactivatedAfterEdit())
+		Charger_Turn_Apply();
 	End_Mini_Panel();
 }
 
@@ -529,18 +679,35 @@ static void Show_Tab_About()
 
 	Panel_Pos(0.f, 0.f, Cell_W, Cell_H, Gap);
 	Begin_Mini_Panel("MP_About_Main", "Vortex", Cell_W, Cell_H);
-	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "First beta (1.0) of Vortex");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Second beta (1.1) of Vortex");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Legit and Semi Rage cheat");
 	ImGui::TextColored(M_Color(0x80, 0x80, 0x88), "all features are made for Vortex");
-	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Developed by Rowan <3");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Developed by Rowan");
 	ImGui::TextColored(M_Color(0x60, 0x60, 0x68), "thanks to those who helped me with the code");
 	End_Mini_Panel();
 
 	Panel_Pos(1.f, 0.f, Cell_W, Cell_H, Gap);
-	Begin_Mini_Panel("MP_About_Controls", "Controls", Cell_W, Cell_H);
-	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "M1 for Aimbot");
-	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "F for Rapid Fire");
-	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Insert for open menu");
+	Begin_Mini_Panel("MP_About_Features", "Features", Cell_W, Cell_H);
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Aimbot");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Anti-Aim");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Auto Bunnyhop");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Strafe");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "ESP");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Chams");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Rapid Fire");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Lag Exploit");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Airstuck");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Charger Turn");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Nightmode");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Fog Controller");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Skybox Color");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "World Color");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Flashlight Bright");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "No Visual Recoil");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "No Boomer Vomit");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Enemy Chat Spy");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Enable Mods Online");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Chat Spammer");
 	End_Mini_Panel();
 }
 
@@ -578,6 +745,8 @@ static void Show_Menu()
 	case 3:  Show_Tab_Exploits();     break;
 	case 4:  Show_Tab_Misc();         break;
 	case 5:  Show_Tab_Configs();      break;
+	case 7:  Show_Tab_AntiAim();      break;
+	case 8:  Show_Tab_World();        break;
 	default: Show_Tab_About();        break;
 	}
 

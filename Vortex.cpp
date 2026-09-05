@@ -36,17 +36,17 @@ bool Strafe_Enabled;
 
 bool Esp_Enabled;
 
-bool Esp_Team2 = true;
+bool Esp_Team2 = false;
 
-bool Esp_Team3 = true;
+bool Esp_Team3 = false;
 
-bool Esp_Commons = true;
+bool Esp_Commons = false;
 
-bool Esp_Names = true;
+bool Esp_Names = false;
 
-bool Esp_Distance = true;
+bool Esp_Distance = false;
 
-bool Esp_Health_Bar = true;
+bool Esp_Health_Bar = false;
 
 bool Esp_Snap_Lines;
 
@@ -58,13 +58,11 @@ float Esp_Team2_Color[4] = { 0.f, 1.f, 0.f, 1.f };
 
 float Esp_Team3_Color[4] = { 1.f, 0.25f, 0.25f, 1.f };
 
-bool Watermark_Enabled = true;
-
 bool No_Vomit_Enabled;
 
 bool Chams_Enabled;
 
-bool Chams_X_Ray = true;
+bool Chams_X_Ray = false;
 
 int Chams_Style;
 
@@ -77,8 +75,8 @@ void* Model_Render;
 bool Rapid_Fire_Enabled;
 
 bool Lag_Exploit_Enabled = false;
-__int32 Lag_Exploit_Key = VK_MBUTTON;
-__int32 Lag_Exploit_Value = 200;
+__int32 Lag_Exploit_Key = 0;
+__int32 Lag_Exploit_Value = 1200;
 bool Air_Stuck_Enabled = false;
 __int32 Air_Stuck_Key = VK_XBUTTON1;
 bool Charger_Turn_Enabled = false;
@@ -95,7 +93,7 @@ __int32 Tick_Base_Correction_Msecs = 60;
 
 bool Tick_Manipulation_Enabled;
 
-bool Tick_Manipulation_Interact = true;
+bool Tick_Manipulation_Interact = false;
 
 unsigned __int32 Tick_Manipulation_Ticks = 10;
 
@@ -117,11 +115,11 @@ float Vortex_Aimbot_Distance = 30.f;
 
 bool Vortex_Aimbot_Silent;
 
-bool Vortex_Aimbot_Visible = true;
+bool Vortex_Aimbot_Visible = false;
 
-bool Vortex_Aimbot_Auto_Fire = true;
+bool Vortex_Aimbot_Auto_Fire = false;
 
-bool Vortex_Aimbot_Prediction = true;
+bool Vortex_Aimbot_Prediction = false;
 
 bool Vortex_Aimbot_Prioritize_Players = false;
 
@@ -135,13 +133,93 @@ bool Vortex_No_Spread_Enabled;
 
 bool Mods_Online_Enabled;
 
+bool Item_Esp_Enabled = false;
+
+bool Item_Esp_Weapons_Text = false;
+
+bool Item_Esp_Weapons_Boxes = false;
+
+float Item_Esp_Weapons_Color[4] = { 1.f, 0.8f, 0.8f, 1.f };
+
+bool Item_Esp_Heal_Enabled = false;
+
+bool Item_Esp_Heal_Text = false;
+
+bool Item_Esp_Heal_Boxes = false;
+
+float Item_Esp_Heal_Color[4] = { 1.f, 0.6f, 1.f, 1.f };
+
+bool Item_Esp_Mounted_Enabled = false;
+
+bool Item_Esp_Mounted_Text = false;
+
+bool Item_Esp_Mounted_Boxes = false;
+
+float Item_Esp_Mounted_Color[4] = { 1.f, 1.f, 1.f, 1.f };
+
+bool Anti_Aim_Enabled;
+
+bool Anti_Aim_Silent = false;
+
+__int32 Anti_Aim_Yaw_Mode;
+
+float Anti_Aim_Yaw_Value = 15.f;
+
+__int32 Anti_Aim_Pitch_Mode;
+
+float Anti_Aim_Pitch_Value = 89.f;
+
+bool Chat_Spammer_Enabled;
+
+float Chat_Spammer_Interval = 5.f;
+
+char Chat_Spammer_Message[128] = "Hello!";
+
+bool World_Enabled;
+
+bool World_Nightmode;
+
+bool World_Sky_Color_Enabled;
+
+float World_Sky_Color[4] = { 0.35f, 0.55f, 1.f, 1.f };
+
+bool World_World_Color_Enabled;
+
+float World_World_Color[4] = { 0.6f, 0.6f, 0.62f, 1.f };
+
+bool World_Fullbright_Enabled;
+
+bool World_Full_Flashlight_Enabled;
+
+float World_Flashlight_Fov = 150.f;
+
+bool World_No_Fog_Enabled;
+
+bool World_Custom_Fog_Enabled;
+
+bool World_Blend_Fog_Enabled;
+
+bool World_Fog_Rainbow_Enabled;
+
+float World_Fog_Rainbow_Speed = 5.f;
+
+float World_Fog_Primary_Color[4] = { 0.55f, 0.65f, 0.75f, 1.f };
+
+float World_Fog_Secondary_Color[4] = { 0.55f, 0.65f, 0.75f, 1.f };
+
+float World_Fog_Start = 1000.f;
+
+float World_Fog_End = 12000.f;
+
+float World_Fog_Density = 1.f;
+
 CreateMove_Type Original_CreateMove;
 
 Override_View_Type Original_Override_View;
 
 Draw_Model_Execute_Type Original_Draw_Model_Execute;
 
-bool Chat_Spy_Enabled = true;
+bool Chat_Spy_Enabled = false;
 
 __int32 Chat_Spy_Method = 0;
 
@@ -198,10 +276,7 @@ static DWORD WINAPI Main_Thread(void*)
 
 	Initialize_D3D9();
 
-	if (Hitmarker_Enabled == true)
-	{
-		Install_Hitmarker();
-	}
+	Install_Hitmarker();
 
 	Install_Esp();
 

@@ -139,8 +139,6 @@ static void* Find_Model_Render_Interface()
 static const char* Chams_Style_Flat[] =
 {
 	"debug/debugambientcube",
-	"customchamsmeow/mask_write",
-	"customchamsmeow/HeavenCustomMaterial",
 	"dev/glow_color",
 };
 
@@ -342,8 +340,6 @@ static void Chams_Apply_Material(__int32 Team, bool Ignore_Z)
 
 static void __fastcall Draw_Model_Execute_Hook(void* Ecx, void* Edx, const Draw_Model_State_Structure& State, const Model_Render_Info_Structure& Info, void* Bone_To_World)
 {
-	static bool Debug_Logged;
-
 	__try
 	{
 		if (No_Vomit_Tried == false)
@@ -389,12 +385,6 @@ static void __fastcall Draw_Model_Execute_Hook(void* Ecx, void* Edx, const Draw_
 
 					if ((Team == 2) || (Team == 3))
 					{
-						if (Debug_Logged == false)
-						{
-							Debug_Logged = true;
-
-						}
-
 						if (Chams_X_Ray == true)
 						{
 							Chams_Apply_Material(Team, true);

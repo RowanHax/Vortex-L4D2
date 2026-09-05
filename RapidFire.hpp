@@ -16,6 +16,8 @@ const unsigned __int32 Rapid_Fire_Pointer_Offset = 4352236;
 
 const unsigned __int32 Rapid_Fire_Bind_Key = 'F';
 
+const unsigned __int32 In_Zoom_Bit = 524288;
+
 typedef void(__cdecl* CL_Move_Type)(float Accumulated_Extra_Samples, bool Final_Tick);
 
 static CL_Move_Type Original_CL_Move;
@@ -34,6 +36,10 @@ static Extended_Command_Structure Extended_Commands[150];
 static __int32 Accumulative_Correction;
 
 static __int8 Consistent_Time;
+
+static float Update_Animation_Time;
+
+static __int8 Update_Animation_Type;
 
 static void* Get_Active_Weapon(void* Player);
 
@@ -127,17 +133,17 @@ static unsigned __int32 Get_Tick_Manipulation_Queue()
 
 static bool Rapid_Fire_Key_Active()
 {
+	if (Tick_Manipulation_Enabled == false)
+	{
+		return false;
+	}
+
 	return (GetAsyncKeyState(Rapid_Fire_Bind_Key) & 0x8000) != 0;
 }
 
 static bool Rapid_Fire_Active()
 {
-	if (Tick_Manipulation_Enabled == true)
-	{
-		return true;
-	}
-
-	return Rapid_Fire_Key_Active();
+	return Tick_Manipulation_Enabled;
 }
 
 static void* Original_Copy_Command;
@@ -154,6 +160,8 @@ static void __fastcall Redirected_Copy_Command_Body(void* Unknown_Parameter, voi
 
 	const unsigned __int32 Local_Player = Get_Local_Player();
 
+	const bool Key_Trigger = (((*(__int32*)((unsigned __int32)User_Command + 36) & In_Zoom_Bit) == In_Zoom_Bit) || (Rapid_Fire_Key_Active() == true)) ? true : false;
+
 	if ((Local_Player != 0) && (Rapid_Fire_Active() == true))
 	{
 		Global_Variables_Structure* Global_Variables = *(Global_Variables_Structure**)((unsigned __int32)Client_Module + 7096744);
@@ -164,9 +172,9 @@ static void __fastcall Redirected_Copy_Command_Body(void* Unknown_Parameter, voi
 
 			*(__int32*)(Local_Player + 20) = Command_Number;
 
-			if (Rapid_Fire_Key_Active() == true)
+			if (Key_Trigger == true)
 			{
-				Extended_Command->Extra_Commands = max(0, Extra_Commands = min(max((__int32)Tick_Manipulation_Ticks, (__int32)(0.06f / Global_Variables->Interval_Per_Tick + 0.5f)), 14));
+				Extended_Command->Extra_Commands = max(0, Extra_Commands = min(max((__int32)Tick_Manipulation_Ticks, (__int32)(0.06f / Global_Variables->Interval_Per_Tick + 0.5f)), 15));
 
 				*(float*)(Local_Player + 16) *= 1.f + (float)Extended_Command->Extra_Commands;
 
@@ -255,44 +263,55 @@ static void __fastcall Redirected_Copy_Command_Body(void* Unknown_Parameter, voi
 
 				Extended_Command->Sequence_Shift = Initial_Extended_Command->Sequence_Shift;
 			};
-			const unsigned __int32 Interact_Queue = Get_Tick_Manipulation_Queue();
 
-			if (Interact_Queue != 0)
-			{
-				Disable_Clock_Correction((__int32)Interact_Queue);
-			}
+			const unsigned __int32 Interact_Queue = Get_Tick_Manipulation_Queue();
 
 			if (*(__int32*)(Local_Player + 228) == 3)
 			{
 				if (*(unsigned __int8*)(Local_Player + 7322) == 0)
 				{
-					if (*(__int32*)(Local_Player + 10008) == Invalid_Handle)
+					if ((Key_Trigger == true) || (Interact_Queue != 0))
 					{
-						if ((*(__int32*)(Local_Player + 10012) != Invalid_Handle) || (*(__int32*)(Local_Player + 10024) != Invalid_Handle) || (*(__int32*)(Local_Player + 10056) != Invalid_Handle))
+						if (*(__int32*)(Local_Player + 10008) == Invalid_Handle)
 						{
 							*(__int32*)((unsigned __int32)User_Command + 36) |= (*(__int32*)(Local_Player + 10056) != Invalid_Handle) * 2;
 						}
-					}
-					else
-					{
-						Sequence_Shift(2);
+						else
+						{
+							Sequence_Shift(2);
+						}
+
+						Disable_Clock_Correction((__int32)Tick_Manipulation_Ticks);
 					}
 				}
 				else
 				{
-					if (*(__int32*)(Local_Player + 7324) == 0)
+					if ((*(__int32*)(Local_Player + 7324) == 0) && (Key_Trigger == true))
 					{
 						Sequence_Shift(-2);
 					}
 				}
 
 				Correct_Extended_Command();
+
+				*(__int32*)(Local_Player + 5620) = Command_Number;
 			}
 			else
 			{
+				const __int8 Action = (*(__int32*)(Local_Player + 7076) == *(__int32*)(Local_Player + 376)) ? 1 : 0;
+
+				const __int8 Reviving = (*(__int32*)(Local_Player + 8076) != Invalid_Handle) ? 1 : 0;
+
 				if ((*(float*)(Local_Player + 4604) + 800.f * Global_Variables->Interval_Per_Tick >= 560.f) + (*(unsigned __int8*)(Local_Player + 8068)) + (*(unsigned __int8*)(Local_Player + 9708)) != 0)
 				{
 					Sequence_Shift(2);
+				}
+				else
+				{
+					if ((Key_Trigger == true) || (Interact_Queue != 0))
+					{
+						Disable_Clock_Correction((__int32)Tick_Manipulation_Ticks);
+					}
 				}
 
 				Correct_Extended_Command();
@@ -307,6 +326,8 @@ static void __fastcall Redirected_Copy_Command_Body(void* Unknown_Parameter, voi
 	if (User_Command != nullptr)
 	{
 		Run_Vortex_No_Spread((UserCmd_Structure*)User_Command);
+
+		*(__int32*)((unsigned __int32)User_Command + 36) &= ~In_Zoom_Bit;
 	}
 
 	((void(__thiscall*)(void*, void*))Original_Copy_Command)(Unknown_Parameter, User_Command);
@@ -383,23 +404,132 @@ static void __cdecl Redirected_Read_Packets(__int8 Final)
 	Parsed_Packets = ((unsigned __int32)_ReturnAddress() != (unsigned __int32)Engine_Module + 1631183) ? 1 : 0;
 }
 
+static void Redirected_Update_Animations()
+{
+	Global_Variables_Structure* Global_Variables = *(Global_Variables_Structure**)((unsigned __int32)Client_Module + 7096744);
+
+	float Previous_Time = Global_Variables->Time;
+
+	Global_Variables->Time = Update_Animation_Time;
+
+	float Previous_Frame_Time = Global_Variables->Frame_Time;
+
+	Global_Variables->Frame_Time = Global_Variables->Interval_Per_Tick * Update_Animation_Type;
+
+	void* Animation_List = *(void**)((unsigned __int32)Client_Module + 7479612);
+
+	__int32 Entity_Count = *(__int32*)((unsigned __int32)Client_Module + 7479624);
+
+	if ((Animation_List != nullptr) && (Entity_Count > 0) && (Entity_Count <= 1024))
+	{
+		__int32 Entity_Number = 0;
+
+		while (Entity_Number != Entity_Count)
+		{
+			if ((*(__int8*)((unsigned __int32)Animation_List + 8 * Entity_Number + 4) & 1) == 1)
+			{
+				void* Entity = *(void**)((unsigned __int32)Animation_List + 8 * Entity_Number);
+
+				if (Entity != nullptr)
+				{
+					*(float*)((unsigned __int32)Entity + 328) = Update_Animation_Time - Global_Variables->Frame_Time;
+
+					using Update_Animation_Type_2 = void(__thiscall**)(void* Entity);
+
+					(*Update_Animation_Type_2(*(unsigned __int32*)Entity + 808))(Entity);
+				}
+			}
+
+			Entity_Number += 1;
+		}
+	}
+
+	Global_Variables->Frame_Time = Previous_Frame_Time;
+
+	Global_Variables->Time = Previous_Time;
+}
+
 static void* Original_Send_Move;
 
 static void __cdecl Redirected_Send_Move()
 {
-	if (Rapid_Fire_Active() == true)
+	if ((Rapid_Fire_Active() == false) || (Extra_Commands == -1))
 	{
-		unsigned __int32 Client_State = *(unsigned __int32*)((unsigned __int32)Engine_Module + Rapid_Fire_Pointer_Offset);
+		((void(__cdecl*)())Original_Send_Move)();
 
-		unsigned __int32 Network_Channel = (Client_State != 0) ? *(unsigned __int32*)(Client_State + 24) : 0;
+		return;
+	}
 
-		if (Network_Channel != 0)
+	struct Message_Structure
+	{
+		__int8 Message[160];
+
+		void Construct(__int8* Data, unsigned __int32 Size)
 		{
-			*(__int32*)(Network_Channel + 28) = 255;
+			memset(Message, 0, sizeof(Message));
+
+			*(void**)Message = (void*)((unsigned __int32)Engine_Module + 3501364);
+
+			*(void**)((unsigned __int32)Message + 132) = Data;
+
+			*(__int32*)((unsigned __int32)Message + 136) = Size;
+
+			*(__int32*)((unsigned __int32)Message + 140) = Size * 8;
+		}
+	};
+
+	Message_Structure Message;
+
+	__int8 Data[4000];
+
+	Message.Construct(Data, sizeof(Data));
+
+	void* Client = *(void**)((unsigned __int32)Engine_Module + Rapid_Fire_Pointer_Offset);
+
+	__int32 Choked_Commands = *(__int32*)((unsigned __int32)Client + 19024);
+
+	__int32 Commands_Queue = min(Choked_Commands + 1, 15);
+
+	*(__int32*)((unsigned __int32)&Message + 88) = Commands_Queue;
+
+	__int32 Extra_Commands_Queue = Choked_Commands + 1 - Commands_Queue;
+
+	__int32 Backup_Commands = min(Extra_Commands_Queue, 7);
+
+	*(__int32*)((unsigned __int32)&Message + 84) = Backup_Commands;
+
+	__int32 From_Command_Number = -1;
+
+	__int32 Next_Command_Number = *(__int32*)((unsigned __int32)Client + 19020) + Choked_Commands + 2;
+
+	__int32 To_Command_Number = Next_Command_Number - Commands_Queue - Backup_Commands;
+
+	Write_Command_Label:
+	{
+		using Write_Command_Type = __int8(__thiscall*)(void* Client, void* Unknown_Parameter_1, void* Data, __int32 From, __int32 To, void* Unknown_Parameter_2);
+
+		Write_Command_Type((unsigned __int32)Client_Module + 691088)(*(void**)((unsigned __int32)Engine_Module + 5171072), nullptr, (void*)((unsigned __int32)&Message + 132), From_Command_Number, To_Command_Number, nullptr);
+
+		From_Command_Number = To_Command_Number;
+
+		To_Command_Number += 1;
+
+		if (To_Command_Number != Next_Command_Number)
+		{
+			goto Write_Command_Label;
 		}
 	}
 
-	((void(__cdecl*)())Original_Send_Move)();
+	void* Network_Channel = *(void**)(*(unsigned __int32*)((unsigned __int32)Engine_Module + Rapid_Fire_Pointer_Offset) + 24);
+
+	if (*(__int32*)((unsigned __int32)Network_Channel + 16) != -1)
+	{
+		*(__int32*)((unsigned __int32)Network_Channel + 28) -= Extra_Commands_Queue;
+	}
+
+	using Send_Message_Type = void(__thiscall**)(void* Network_Channel, void* Message, void* Unknown_Parameter_1, void* Unknown_Parameter_2);
+
+	(*Send_Message_Type(*(unsigned __int32*)Network_Channel + 164))(Network_Channel, &Message, nullptr, nullptr);
 }
 
 struct Prediction_Copy_Structure
@@ -501,9 +631,21 @@ static void __cdecl CL_Move_Hook(float Accumulated_Extra_Samples, bool Final_Tic
 		{
 			Redirected_Read_Packets(Final_Tick ? 1 : 0);
 
+			Local_Player = *(void**)((unsigned __int32)Client_Module + 7498712);
+
 			((void(__cdecl*)())((unsigned __int32)Engine_Module + 527776))();
 
+			Redirected_Update_Animations();
+
 			((void(__cdecl*)())((unsigned __int32)Engine_Module + 521648))();
+
+			Update_Animation_Time = (*(Global_Variables_Structure**)((unsigned __int32)Client_Module + 7096744))->Time;
+
+			Update_Animation_Type = 1;
+
+			Redirected_Update_Animations();
+
+			Update_Animation_Type = 0;
 		}
 
 		while (true)
