@@ -241,6 +241,7 @@ static bool __fastcall CreateMove_Hook(void* Ecx, void* Edx, float Input_Sample_
 	
 	Lag_Exploit_Apply(Command);
 	Safe_Room_TP_Arm_From_Client(Command);
+	Roll_TP_Apply(Command);
 
 	if (Auto_Bhop_Enabled == true)
 	{

@@ -22,6 +22,10 @@
 
 #include "World.hpp"
 
+#include "ThirdPerson.hpp"
+
+#include "NameStealer.hpp"
+
 #include "D3D9.hpp"
 
 typedef long(__stdcall* EndScene_Type)(IDirect3DDevice9* Device);
@@ -255,6 +259,12 @@ static long __stdcall EndScene_Hook(IDirect3DDevice9* Device)
 
 			Builder.AddRanges(IO.Fonts->GetGlyphRangesDefault());
 
+			Builder.AddRanges(IO.Fonts->GetGlyphRangesGreek());
+
+			Builder.AddRanges(IO.Fonts->GetGlyphRangesCyrillic());
+
+			Builder.AddRanges(IO.Fonts->GetGlyphRangesVietnamese());
+
 			Builder.AddChar(0x25CE);
 			Builder.AddChar(0x25C9);
 			Builder.AddChar(0x25B8);
@@ -268,11 +278,11 @@ static long __stdcall EndScene_Hook(IDirect3DDevice9* Device)
 			Builder.BuildRanges(&Ranges);
 
 			IO.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\segoeui.ttf", 14.f, nullptr, Ranges.Data);
-		}
 
-		if (GetFileAttributesA("C:\\Windows\\Fonts\\seguisb.ttf") != INVALID_FILE_ATTRIBUTES)
-		{
-			Font_Title = IO.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\seguisb.ttf", 16.f, nullptr, IO.Fonts->GetGlyphRangesDefault());
+			if (GetFileAttributesA("C:\\Windows\\Fonts\\seguisb.ttf") != INVALID_FILE_ATTRIBUTES)
+			{
+				Font_Title = IO.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\seguisb.ttf", 16.f, nullptr, Ranges.Data);
+			}
 		}
 
 		ImGui_ImplWin32_Init(Game_Window);
@@ -329,6 +339,10 @@ static long __stdcall EndScene_Hook(IDirect3DDevice9* Device)
 	World_Update_Cvars();
 
 	World_Update_Materials();
+
+	Third_Person_Update();
+
+	Name_Stealer_Update();
 
 	if (No_Visual_Recoil_Enabled == true)
 	{
@@ -390,7 +404,7 @@ static long __stdcall EndScene_Hook(IDirect3DDevice9* Device)
 
 		ImVec2 Title_Size = Font->CalcTextSizeA(Font_Size, FLT_MAX, 0.f, "VORTEX");
 
-		ImVec2 Sub_Size = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, 0.f, " v1.1 - beta");
+		ImVec2 Sub_Size = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, 0.f, " v1.2 - beta");
 
 		const ImVec2 Box_Size(Title_Size.x + Sub_Size.x + Padding * 2.f, Font_Size + Padding * 2.f);
 
@@ -402,7 +416,7 @@ static long __stdcall EndScene_Hook(IDirect3DDevice9* Device)
 
 		Draw_List->AddText(Font, Font_Size, ImVec2(Position.x + Padding, Text_Y), M_U32(0xFF, 0x50, 0x5A), "VORTEX");
 
-		Draw_List->AddText(ImVec2(Position.x + Padding + Title_Size.x, Text_Y + 2.f), M_U32(0xB5, 0xB5, 0xB5), "v1.1 - beta");
+		Draw_List->AddText(ImVec2(Position.x + Padding + Title_Size.x, Text_Y + 2.f), M_U32(0xB5, 0xB5, 0xB5), "v1.2 - beta");
 	}
 
 	ImGui::Render();

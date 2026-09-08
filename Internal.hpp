@@ -129,6 +129,8 @@ extern __int32 Lag_Exploit_Key;
 extern __int32 Lag_Exploit_Value;
 extern bool Air_Stuck_Enabled;
 extern __int32 Air_Stuck_Key;
+extern bool Roll_TP_Enabled;
+extern __int32 Roll_TP_Key;
 extern bool Charger_Turn_Enabled;
 extern unsigned __int8  Charger_Turn_Original_Byte;
 extern bool            Charger_Turn_Patched;
@@ -145,6 +147,8 @@ extern bool Tick_Manipulation_Interact;
 
 extern unsigned __int32 Tick_Manipulation_Ticks;
 
+extern __int32 Rapid_Fire_Bind_Key;
+
 extern __int32 Extra_Commands;
 
 extern void* Entity_List;
@@ -153,14 +157,16 @@ extern void* (__fastcall* Get_Client_Entity)(void* Ecx, void* Edx, __int32 Index
 
 extern bool No_Visual_Recoil_Enabled;
 extern bool Scope_Bypass_Enabled;
+extern bool Third_Person_Enabled;
+extern bool Name_Stealer_Enabled;
 
 extern bool Vortex_Aimbot_Enabled;
+extern __int32 Vortex_Aimbot_Key;
 extern __int32 Vortex_Aimbot_Hitbox;
 extern float Vortex_Aimbot_Fov;
 extern float Vortex_Aimbot_Smooth;
 extern float Vortex_Aimbot_Distance;
 extern bool Vortex_Aimbot_Silent;
-extern bool Vortex_Aimbot_Visible;
 extern bool Vortex_Aimbot_Auto_Fire;
 extern bool Vortex_Aimbot_Prediction;
 extern bool Vortex_Aimbot_Prioritize_Players;

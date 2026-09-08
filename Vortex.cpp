@@ -26,6 +26,10 @@
 
 #include "ScopeBypass.hpp"
 
+#include "ThirdPerson.hpp"
+
+#include "NameStealer.hpp"
+
 HMODULE Client_Module;
 
 HMODULE Engine_Module;
@@ -75,10 +79,12 @@ void* Model_Render;
 bool Rapid_Fire_Enabled;
 
 bool Lag_Exploit_Enabled = false;
-__int32 Lag_Exploit_Key = 0;
+__int32 Lag_Exploit_Key = 'C';
 __int32 Lag_Exploit_Value = 1200;
 bool Air_Stuck_Enabled = false;
-__int32 Air_Stuck_Key = VK_XBUTTON1;
+__int32 Air_Stuck_Key = 'X';
+bool Roll_TP_Enabled = false;
+__int32 Roll_TP_Key = 'P';
 bool Charger_Turn_Enabled = false;
 unsigned __int8  Charger_Turn_Original_Byte = 0;
 bool            Charger_Turn_Patched = false;
@@ -97,13 +103,21 @@ bool Tick_Manipulation_Interact = false;
 
 unsigned __int32 Tick_Manipulation_Ticks = 10;
 
+__int32 Rapid_Fire_Bind_Key = 'F';
+
 __int32 Extra_Commands = -1;
 
 bool No_Visual_Recoil_Enabled;
 
 bool Scope_Bypass_Enabled = false;
 
+bool Third_Person_Enabled = false;
+
+bool Name_Stealer_Enabled = false;
+
 bool Vortex_Aimbot_Enabled;
+
+__int32 Vortex_Aimbot_Key = 0;
 
 __int32 Vortex_Aimbot_Hitbox = 0;
 
@@ -114,8 +128,6 @@ float Vortex_Aimbot_Smooth = 5.f;
 float Vortex_Aimbot_Distance = 30.f;
 
 bool Vortex_Aimbot_Silent;
-
-bool Vortex_Aimbot_Visible = false;
 
 bool Vortex_Aimbot_Auto_Fire = false;
 

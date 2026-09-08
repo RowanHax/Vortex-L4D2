@@ -68,6 +68,8 @@ static Config_Entry Config_Table[] =
 
 	{ "Tick_Manipulation_Ticks", (void*)&Tick_Manipulation_Ticks, 1 },
 
+	{ "Rapid_Fire_Bind_Key", (void*)&Rapid_Fire_Bind_Key, 1 },
+
 	{ "Tick_Base_Fix_Enabled", (void*)&Tick_Base_Fix_Enabled, 0 },
 
 	{ "Tick_Base_Correction_Msecs", (void*)&Tick_Base_Correction_Msecs, 1 },
@@ -75,6 +77,8 @@ static Config_Entry Config_Table[] =
 	{ "No_Visual_Recoil_Enabled", (void*)&No_Visual_Recoil_Enabled, 0 },
 
 	{ "Vortex_Aimbot_Enabled", (void*)&Vortex_Aimbot_Enabled, 0 },
+
+	{ "Vortex_Aimbot_Key", (void*)&Vortex_Aimbot_Key, 1 },
 
 	{ "Vortex_Aimbot_Hitbox", (void*)&Vortex_Aimbot_Hitbox, 1 },
 
@@ -85,8 +89,6 @@ static Config_Entry Config_Table[] =
 	{ "Vortex_Aimbot_Distance", (void*)&Vortex_Aimbot_Distance, 2 },
 
 	{ "Vortex_Aimbot_Silent", (void*)&Vortex_Aimbot_Silent, 0 },
-
-	{ "Vortex_Aimbot_Visible", (void*)&Vortex_Aimbot_Visible, 0 },
 
 	{ "Vortex_Aimbot_Auto_Fire", (void*)&Vortex_Aimbot_Auto_Fire, 0 },
 
@@ -112,6 +114,10 @@ static Config_Entry Config_Table[] =
 
 	{ "Air_Stuck_Key", (void*)&Air_Stuck_Key, 1 },
 
+	{ "Roll_TP_Enabled", (void*)&Roll_TP_Enabled, 0 },
+
+	{ "Roll_TP_Key", (void*)&Roll_TP_Key, 1 },
+
 	{ "Charger_Turn_Enabled", (void*)&Charger_Turn_Enabled, 0 },
 
 	{ "Safe_Room_TP_Enabled", (void*)&Safe_Room_TP_Enabled, 0 },
@@ -119,6 +125,10 @@ static Config_Entry Config_Table[] =
 	{ "Safe_Room_TP_Key", (void*)&Safe_Room_TP_Key, 1 },
 
 	{ "Scope_Bypass_Enabled", (void*)&Scope_Bypass_Enabled, 0 },
+
+	{ "Third_Person_Enabled", (void*)&Third_Person_Enabled, 0 },
+
+	{ "Name_Stealer_Enabled", (void*)&Name_Stealer_Enabled, 0 },
 
 	{ "Hitmarker_Enabled", (void*)&Hitmarker_Enabled, 0 },
 
@@ -292,8 +302,7 @@ static bool Load_Config(const char* Name)
 			continue;
 		}
 
-		if ((strcmp(Key, "Strafe_Hannibal_Enabled") == 0) ||
-			(strcmp(Key, "Air_Strafe_Enabled") == 0))
+		if (strcmp(Key, "Air_Strafe_Enabled") == 0)
 		{
 			int Value = 0;
 			sscanf_s(Line, "%*s = %d", &Value);

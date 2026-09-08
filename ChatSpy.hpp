@@ -10,6 +10,8 @@
 
 #include "Internal.hpp"
 
+#include "Sdk.hpp"
+
 struct IGameEvent
 {
 	void** Vtable;
@@ -211,30 +213,38 @@ static void Chat_Spy_Process_Overlay(IGameEvent* Event)
 		return;
 	}
 
-	unsigned __int8 Info[0x1A4] = { 0 };
+	const __int32 Team = *(__int32*)((unsigned __int32)Entity + 0xE4);
 
-	unsigned __int8 Enemy = 0;
+	const unsigned __int32 Local_Player_Ptr = Get_Local_Player();
+
+	const __int32 Local_Team = (Local_Player_Ptr != 0) ? *(__int32*)(Local_Player_Ptr + 0xE4) : 0;
+
+	const bool Is_Enemy = ((Local_Team == 2) && (Team == 3)) || ((Local_Team == 3) && (Team == 2));
+
+	if (Is_Enemy == false)
+	{
+		return;
+	}
+
+	unsigned __int8 Info[0x1A4] = { 0 };
 
 	__try
 	{
-		Enemy = Is_Entity_Enemy(*(void**)((unsigned __int32)Engine_Module + Engine_Client_Object_Offset), nullptr, Entity_Index, Info);
+		Is_Entity_Enemy((void*)((unsigned __int32)Engine_Module + Engine_Client_Object_Offset), nullptr, Entity_Index, Info);
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
-		return;
-	}
-
-	if (Enemy != 1)
-	{
-		return;
 	}
 
 	if ((Name == nullptr) || (Name[0] == '\0'))
 	{
-		Name = (const char*)Info;
-	}
+		static char Fallback_Name[64];
 
-	const __int32 Team = *(__int32*)((unsigned __int32)Entity + 0xE4);
+		if (Vortex_Get_Player_Name(Entity_Index, Fallback_Name, sizeof(Fallback_Name)) == true)
+		{
+			Name = Fallback_Name;
+		}
+	}
 
 	const unsigned __int32 Color = (Team == 3) ? 0xFF6F7D : 0xD0D0D0;
 
@@ -434,32 +444,45 @@ static void Chat_Spy_Process_Hud(IGameEvent* Event)
 			return;
 		}
 
-		unsigned __int8 Info[0x1A4] = { 0 };
+		const __int32 Team = *(__int32*)((unsigned __int32)Entity + 0xE4);
 
-		unsigned __int8 Enemy = 0;
+		const unsigned __int32 Local_Player_Ptr = Get_Local_Player();
+
+		const __int32 Local_Team = (Local_Player_Ptr != 0) ? *(__int32*)(Local_Player_Ptr + 0xE4) : 0;
+
+		const bool Is_Enemy = ((Local_Team == 2) && (Team == 3)) || ((Local_Team == 3) && (Team == 2));
+
+		if (Is_Enemy == false)
+		{
+			return;
+		}
+
+		unsigned __int8 Info[0x1A4] = { 0 };
 
 		__try
 		{
-			Enemy = Is_Entity_Enemy(*(void**)((unsigned __int32)Engine_Module + Engine_Client_Object_Offset), nullptr, Entity_Index, Info);
+			Is_Entity_Enemy((void*)((unsigned __int32)Engine_Module + Engine_Client_Object_Offset), nullptr, Entity_Index, Info);
 		}
 		__except (EXCEPTION_EXECUTE_HANDLER)
 		{
-			return;
 		}
 
-		if (Enemy != 1)
-		{
-			return;
-		}
 
 		const char* Name = (const char*)Info;
 
-		if ((Name == nullptr) || (Name[0] == '\0'))
+		if ((Name == nullptr) || (Sdk_Plausible_Name(Name, sizeof(Info)) == false))
 		{
-			Name = "(unknown)";
-		}
+			static char Fallback_Name[64];
 
-		const __int32 Team = *(__int32*)((unsigned __int32)Entity + 0xE4);
+			if (Vortex_Get_Player_Name(Entity_Index, Fallback_Name, sizeof(Fallback_Name)) == true)
+			{
+				Name = Fallback_Name;
+			}
+			else
+			{
+				Name = "(unknown)";
+			}
+		}
 
 		const char* Team_Label = "(unknown)";
 		const char* Color_Code = "\x01";

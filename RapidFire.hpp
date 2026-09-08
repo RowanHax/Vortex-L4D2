@@ -14,10 +14,6 @@
 
 const unsigned __int32 Rapid_Fire_Pointer_Offset = 4352236;
 
-const unsigned __int32 Rapid_Fire_Bind_Key = 'F';
-
-const unsigned __int32 In_Zoom_Bit = 524288;
-
 typedef void(__cdecl* CL_Move_Type)(float Accumulated_Extra_Samples, bool Final_Tick);
 
 static CL_Move_Type Original_CL_Move;
@@ -159,8 +155,8 @@ static void __fastcall Redirected_Copy_Command_Body(void* Unknown_Parameter, voi
 	Extended_Command->Sequence_Shift = 0;
 
 	const unsigned __int32 Local_Player = Get_Local_Player();
-
-	const bool Key_Trigger = (((*(__int32*)((unsigned __int32)User_Command + 36) & In_Zoom_Bit) == In_Zoom_Bit) || (Rapid_Fire_Key_Active() == true)) ? true : false;
+	
+	const bool Key_Trigger = Rapid_Fire_Key_Active();
 
 	if ((Local_Player != 0) && (Rapid_Fire_Active() == true))
 	{
@@ -326,8 +322,6 @@ static void __fastcall Redirected_Copy_Command_Body(void* Unknown_Parameter, voi
 	if (User_Command != nullptr)
 	{
 		Run_Vortex_No_Spread((UserCmd_Structure*)User_Command);
-
-		*(__int32*)((unsigned __int32)User_Command + 36) &= ~In_Zoom_Bit;
 	}
 
 	((void(__thiscall*)(void*, void*))Original_Copy_Command)(Unknown_Parameter, User_Command);

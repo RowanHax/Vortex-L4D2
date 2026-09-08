@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdio.h>
+
 #include <imgui.h>
 
 #include "Internal.hpp"
@@ -295,6 +297,164 @@ static void Key_Badge(const char* Key, const char* Label)
 	ImGui::TextColored(M_Color(0xC0, 0xC0, 0xC8), "%s", Label);
 }
 
+static const char* Vortex_Key_Name(__int32 Key)
+{
+	switch (Key)
+	{
+	case 0:        return "None";
+	case 1:        return "Mouse 1";
+	case 2:        return "Mouse 2";
+	case 4:        return "Mouse 3";
+	case 5:        return "Mouse 4";
+	case 6:        return "Mouse 5";
+	case VK_BACK:  return "Backspace";
+	case VK_TAB:   return "Tab";
+	case VK_RETURN:return "Enter";
+	case VK_SHIFT: return "Shift";
+	case VK_CONTROL:return "Ctrl";
+	case VK_MENU:  return "Alt";
+	case VK_CAPITAL:return "Caps Lock";
+	case VK_ESCAPE:return "Esc";
+	case VK_SPACE: return "Space";
+	case VK_PRIOR: return "Page Up";
+	case VK_NEXT:  return "Page Down";
+	case VK_END:   return "End";
+	case VK_HOME:  return "Home";
+	case VK_LEFT:  return "Left";
+	case VK_UP:    return "Up";
+	case VK_RIGHT: return "Right";
+	case VK_DOWN:  return "Down";
+	case VK_INSERT:return "Insert";
+	case VK_DELETE:return "Delete";
+	}
+
+	if ((Key >= '0') && (Key <= '9'))
+	{
+		static char Buffer[2];
+		Buffer[0] = (char)Key;
+		Buffer[1] = 0;
+		return Buffer;
+	}
+
+	if ((Key >= 'A') && (Key <= 'Z'))
+	{
+		static char Buffer[2];
+		Buffer[0] = (char)Key;
+		Buffer[1] = 0;
+		return Buffer;
+	}
+
+	if ((Key >= VK_F1) && (Key <= VK_F12))
+	{
+		static const char* Names[] = { "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12" };
+		return Names[Key - VK_F1];
+	}
+
+	if ((Key >= VK_NUMPAD0) && (Key <= VK_NUMPAD9))
+	{
+		static const char* Names[] = { "Num0", "Num1", "Num2", "Num3", "Num4", "Num5", "Num6", "Num7", "Num8", "Num9" };
+		return Names[Key - VK_NUMPAD0];
+	}
+
+	static char Fallback[16];
+	sprintf_s(Fallback, "Key %d", Key);
+	return Fallback;
+}
+
+static __int32* Vortex_Bind_Target;
+
+static bool Vortex_Bind_Flush_Done;
+
+static void Vortex_Arm_Bind(__int32* Key)
+{
+	Vortex_Bind_Target = Key;
+
+	Vortex_Bind_Flush_Done = false;
+}
+
+static void Vortex_Update_Bind_Capture()
+{
+	if (Vortex_Bind_Target == nullptr)
+	{
+		return;
+	}
+
+	if (Menu_Open == false)
+	{
+		Vortex_Bind_Target = nullptr;
+		return;
+	}
+
+	if (Vortex_Bind_Flush_Done == false)
+	{
+		for (__int32 Key = 1; Key <= 255; Key++)
+		{
+			GetAsyncKeyState(Key);
+		}
+
+		Vortex_Bind_Flush_Done = true;
+
+		return;
+	}
+
+	if ((GetAsyncKeyState(VK_ESCAPE) & 1) != 0)
+	{
+		Vortex_Bind_Target = nullptr;
+		return;
+	}
+
+	for (__int32 Key = 2; Key <= 255; Key++)
+	{
+		if ((Key == VK_INSERT) || (Key == VK_ESCAPE))
+		{
+			continue;
+		}
+
+		if ((GetAsyncKeyState(Key) & 1) != 0)
+		{
+			*Vortex_Bind_Target = Key;
+			Vortex_Bind_Target = nullptr;
+			return;
+		}
+	}
+}
+
+static void Key_Bind_Control(__int32* Key, const char* Zero_Text, const char* Label)
+{
+	const bool Listening = (Vortex_Bind_Target == Key);
+
+	ImGui::PushID(Label);
+
+	if (Listening == true)
+	{
+		ImGui::Button("...");
+	}
+	else
+	{
+		const char* Text = (*Key != 0) ? Vortex_Key_Name(*Key) : ((Zero_Text != nullptr) ? Zero_Text : "None");
+
+		if (ImGui::Button(Text) == true)
+		{
+			Vortex_Arm_Bind(Key);
+		}
+
+		if (ImGui::IsItemClicked(1) == true)
+		{
+			*Key = 0;
+		}
+
+		if (ImGui::IsItemHovered() == true)
+		{
+			ImGui::SetTooltip("Left click: bind a key\nRight click: clear");
+		}
+	}
+
+	ImGui::SameLine();
+	ImGui::TextColored(M_Color(0xC0, 0xC0, 0xC8), "%s", (Listening == true) ? "Press a key... (Esc cancels)" : Label);
+
+	ImGui::PopID();
+}
+
 static void Show_Tab_Vortex()
 {
 	float Cell_W, Cell_H, Gap;
@@ -304,9 +464,9 @@ static void Show_Tab_Vortex()
 	Begin_Mini_Panel("MP_Vortex_Main", "Vortex Aimbot", Cell_W, Cell_H);
 	ImGui::Checkbox("Enable", &Vortex_Aimbot_Enabled);
 	ImGui::TextColored(M_Color(0x80, 0x80, 0x88), "Vortex aimbot, can be used for legit and rage.");
+	Key_Bind_Control(&Vortex_Aimbot_Key, "Always", "Activation key");
 	ImGui::BeginDisabled(Vortex_Aimbot_Enabled == false);
 	ImGui::Checkbox("Silent", &Vortex_Aimbot_Silent);
-	ImGui::Checkbox("Visible check", &Vortex_Aimbot_Visible);
 	ImGui::Checkbox("Auto fire", &Vortex_Aimbot_Auto_Fire);
 	ImGui::Checkbox("Prediction", &Vortex_Aimbot_Prediction);
 	ImGui::SameLine();
@@ -340,7 +500,7 @@ static void Show_Tab_Vortex()
 
 	Panel_Pos(1.f, 1.f, Cell_W, Cell_H, Gap);
 	Begin_Mini_Panel("MP_Vortex_Accuracy", "Accuracy", Cell_W, Cell_H);
-	ImGui::Checkbox("No Spread", &Vortex_No_Spread_Enabled);
+	ImGui::Checkbox("No Spread/No Recoil", &Vortex_No_Spread_Enabled);
 	End_Mini_Panel();
 }
 
@@ -509,7 +669,7 @@ static void Show_Tab_Visuals()
 static void Show_Tab_Exploits()
 {
 	float Cell_W, Cell_H, Gap;
-	Panel_Grid_Size(Cell_W, Cell_H, Gap);
+	Panel_Grid_Size(Cell_W, Cell_H, Gap, 3.f);
 
 	Panel_Pos(0.f, 0.f, Cell_W, Cell_H, Gap);
 	Begin_Mini_Panel("MP_Exploits_Tick", "Rapid Fire", Cell_W, Cell_H);
@@ -519,21 +679,23 @@ static void Show_Tab_Exploits()
 	Red_Border_On_Focus();
 	ImGui::Checkbox("Interact", &Tick_Manipulation_Interact);
 	ImGui::EndDisabled();
+	Key_Bind_Control(&Rapid_Fire_Bind_Key, "None", "Rapid Fire key");
+	ImGui::TextColored(M_Color(0x80, 0x80, 0x88), "Hold while attacking to trigger.");
 	ImGui::Dummy(ImVec2(0.f, 4.f));	
 	End_Mini_Panel();
 
-	Panel_Pos(0.f, 1.f, Cell_W, Cell_H, Gap);
+	Panel_Pos(1.f, 0.f, Cell_W, Cell_H, Gap);
 	Begin_Mini_Panel("MP_Exploits_Lag", "Lag Exploit", Cell_W, Cell_H);
 	ImGui::Checkbox("Enable Lag Exploit", &Lag_Exploit_Enabled);
 	ImGui::BeginDisabled(Lag_Exploit_Enabled == false);
-	ImGui::SliderInt("Lag Key (0 = always)", &Lag_Exploit_Key, 0, 255);
-	Red_Border_On_Focus();
+	Key_Bind_Control(&Lag_Exploit_Key, "Always", "Lag key");
+	ImGui::TextColored(M_Color(0x80, 0x80, 0x88), "Hold to lag. Always = lags constantly.");
 	ImGui::SliderInt("Lag Value", &Lag_Exploit_Value, 10, 100000);
 	Red_Border_On_Focus();
 	ImGui::EndDisabled();
 	End_Mini_Panel();
 
-	Panel_Pos(1.f, 0.f, Cell_W, Cell_H, Gap);
+	Panel_Pos(0.f, 1.f, Cell_W, Cell_H, Gap);
 	Begin_Mini_Panel("MP_Exploits_Tickbase", "Tickbase Fix", Cell_W, Cell_H);
 	ImGui::Checkbox("Enable", &Tick_Base_Fix_Enabled);
 	ImGui::BeginDisabled(Tick_Base_Fix_Enabled == false);
@@ -546,9 +708,21 @@ static void Show_Tab_Exploits()
 	Begin_Mini_Panel("MP_Exploits_Stuck", "Airstuck", Cell_W, Cell_H);
 	ImGui::Checkbox("Enable Air Stuck", &Air_Stuck_Enabled);
 	ImGui::BeginDisabled(Air_Stuck_Enabled == false);
-	ImGui::SliderInt("Air Stuck Key", &Air_Stuck_Key, 0, 255);
-	Red_Border_On_Focus();
+	Key_Bind_Control(&Air_Stuck_Key, "None", "Air Stuck key");
 	ImGui::EndDisabled();
+	End_Mini_Panel();
+
+	Panel_Pos(0.f, 2.f, Cell_W, Cell_H, Gap);
+	Begin_Mini_Panel("MP_Exploits_RollTP", "Teleport", Cell_W, Cell_H);
+	ImGui::Checkbox("Enable Roll TP", &Roll_TP_Enabled);
+	ImGui::BeginDisabled(Roll_TP_Enabled == false);
+	Key_Bind_Control(&Roll_TP_Key, "None", "TP key");
+	ImGui::EndDisabled();
+	End_Mini_Panel();
+
+	Panel_Pos(1.f, 2.f, Cell_W, Cell_H, Gap);
+	Begin_Mini_Panel("MP_Exploits_Info", "Info", Cell_W, Cell_H);
+	ImGui::TextColored(M_Color(0x80, 0x80, 0x88), "TP needs fix.");
 	End_Mini_Panel();
 }
 
@@ -566,6 +740,7 @@ static void Show_Tab_Misc()
 	Panel_Pos(1.f, 0.f, Cell_W, Cell_H, Gap);
 	Begin_Mini_Panel("MP_Misc_Display", "Display", Cell_W, Cell_H);
 	ImGui::Checkbox("No Boomer Vomit", &No_Vomit_Enabled);
+	ImGui::Checkbox("Name Stealer", &Name_Stealer_Enabled);
 	Section_Label("Chat Spy");
 	ImGui::Checkbox("Enemy Chat Spy", &Chat_Spy_Enabled);
 	ImGui::BeginDisabled(Chat_Spy_Enabled == false);
@@ -602,6 +777,7 @@ static void Show_Tab_Misc()
 	ImGui::Checkbox("Enable Charger Turn", &Charger_Turn_Enabled);
 	if (ImGui::IsItemDeactivatedAfterEdit())
 		Charger_Turn_Apply();
+	ImGui::Checkbox("Third Person", &Third_Person_Enabled);
 	End_Mini_Panel();
 }
 
@@ -679,17 +855,19 @@ static void Show_Tab_About()
 
 	Panel_Pos(0.f, 0.f, Cell_W, Cell_H, Gap);
 	Begin_Mini_Panel("MP_About_Main", "Vortex", Cell_W, Cell_H);
-	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Second beta (1.1) of Vortex");
-	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Legit and Semi Rage cheat");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Beta (1.2)");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Legit, Semi Rage and Rage cheat");
 	ImGui::TextColored(M_Color(0x80, 0x80, 0x88), "all features are made for Vortex");
-	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Developed by Rowan");
-	ImGui::TextColored(M_Color(0x60, 0x60, 0x68), "thanks to those who helped me with the code");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Developed by Rowan <3");
+	ImGui::TextColored(M_Color(0x60, 0x60, 0x68), "thanks to Murayefeskamus who helped me a lot with the code");
+	ImGui::TextColored(M_Color(0x60, 0x60, 0x68), "also thanks to the beta testers who reported bugs");
 	End_Mini_Panel();
 
 	Panel_Pos(1.f, 0.f, Cell_W, Cell_H, Gap);
 	Begin_Mini_Panel("MP_About_Features", "Features", Cell_W, Cell_H);
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Aimbot");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Anti-Aim");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "No Spread/No Recoil");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Auto Bunnyhop");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Strafe");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "ESP");
@@ -698,6 +876,7 @@ static void Show_Tab_About()
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Lag Exploit");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Airstuck");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Charger Turn");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Teleport (need camera fix)");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Nightmode");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Fog Controller");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Skybox Color");
@@ -708,11 +887,16 @@ static void Show_Tab_About()
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Enemy Chat Spy");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Enable Mods Online");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Chat Spammer");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Name Stealer");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Third Person");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Config System");
 	End_Mini_Panel();
 }
 
 static void Show_Menu()
 {
+	Vortex_Update_Bind_Capture();
+
 	ImGui::SetNextWindowPos(ImVec2(59.f, 60.f), ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2(840.f, 540.f), ImGuiCond_Once);
 

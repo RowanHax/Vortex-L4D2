@@ -22,13 +22,19 @@ typedef void* (__thiscall* World_Get_Material_Type)(void* This, __int32 Index);
 
 typedef const char* (__thiscall* World_Material_Get_Name_Type)(void* This);
 
+typedef const char* (__thiscall* World_Material_Get_Group_Type)(void* This);
+
 typedef void(__thiscall* World_Material_Color_Type)(void* This, float R, float G, float B);
+
+typedef void(__thiscall* World_Material_Alpha_Type)(void* This, float Alpha);
 
 struct World_Cached_Material
 {
 	void* Material;
 
 	char Name[160];
+
+	char Group[64];
 
 	float Last_R;
 
@@ -504,39 +510,14 @@ static World_Enum_Materials_Type World_Enum_Materials_End;
 
 static World_Get_Material_Type World_Get_Material;
 
-static bool World_Is_World_Material(const char* Name)
+static bool World_Contains_Text(const char* Text, const char* Needle)
 {
-	if ((Name == nullptr) || (Name[0] == 0))
+	if ((Text == nullptr) || (Text[0] == 0) || (Needle == nullptr) || (Needle[0] == 0))
 	{
 		return false;
 	}
 
-	if (strstr(Name, "models/weapons/") != nullptr)
-	{
-		return false;
-	}
-
-	if (strstr(Name, "v_arms") != nullptr)
-	{
-		return false;
-	}
-
-	if (strstr(Name, "v_models") != nullptr)
-	{
-		return false;
-	}
-
-	return ((strncmp(Name, "models/", 7) == 0) || (strncmp(Name, "world/", 6) == 0) || (strncmp(Name, "nature/", 7) == 0));
-}
-
-static bool World_Is_Sky_Material(const char* Name)
-{
-	if ((Name == nullptr) || (Name[0] == 0))
-	{
-		return false;
-	}
-
-	return (strstr(Name, "skybox/") != nullptr);
+	return strstr(Text, Needle) != nullptr;
 }
 
 static void World_Build_Material_Cache()
@@ -615,9 +596,27 @@ static void World_Build_Material_Cache()
 				continue;
 			}
 
-			const char* Name = ((World_Material_Get_Name_Type)Material_Vtable[0])(Material);
+			const char* Name = nullptr;
 
-			if ((Name == nullptr) || (Sdk_Is_Readable_Range(Name, 4) == false) || (Name[0] == 0))
+			const char* Group = nullptr;
+
+			__try
+			{
+				Name = ((World_Material_Get_Name_Type)Material_Vtable[0])(Material);
+
+				if ((Name != nullptr) && (Sdk_Is_Readable_Range(Name, 4) == true) && (Name[0] != 0))
+				{
+					Group = ((World_Material_Get_Group_Type)Material_Vtable[1])(Material);
+				}
+			}
+			__except (EXCEPTION_EXECUTE_HANDLER)
+			{
+				Name = nullptr;
+
+				Group = nullptr;
+			}
+
+			if ((Name == nullptr) || (Name[0] == 0))
 			{
 				continue;
 			}
@@ -634,13 +633,22 @@ static void World_Build_Material_Cache()
 
 			Entry.Applied = false;
 
-			Entry.Is_Sky = World_Is_Sky_Material(Name);
+			Entry.Is_Sky = World_Contains_Text(Name, "skybox");
 
-			Entry.Is_World = World_Is_World_Material(Name);
+			Entry.Is_World = World_Contains_Text(Group, "World");
 
 			strncpy_s(Entry.Name, Name, sizeof(Entry.Name) - 1);
 
-			World_Material_Count++;
+			if ((Group != nullptr) && (Sdk_Is_Readable_Range(Group, 4) == true))
+			{
+				strncpy_s(Entry.Group, Group, sizeof(Entry.Group) - 1);
+			}
+			else
+			{
+				Entry.Group[0] = 0;
+			}
+
+					World_Material_Count++;
 		}
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
@@ -648,20 +656,97 @@ static void World_Build_Material_Cache()
 	}
 }
 
-static bool World_Use_Materials;
+static bool World_Modulation_Applied;
+
+static bool World_Last_Enabled;
+
+static bool World_Last_Night;
+
+static bool World_Last_Sky_Enabled;
+
+static bool World_Last_World_Enabled;
+
+static float World_Last_Sky_Color[3];
+
+static float World_Last_World_Color[3];
+
+static bool World_State_Unchanged()
+{
+	if (World_Enabled != World_Last_Enabled)
+	{
+		return false;
+	}
+
+	if (World_Nightmode != World_Last_Night)
+	{
+		return false;
+	}
+
+	if (World_Sky_Color_Enabled != World_Last_Sky_Enabled)
+	{
+		return false;
+	}
+
+	if (World_World_Color_Enabled != World_Last_World_Enabled)
+	{
+		return false;
+	}
+
+	if ((fabsf(World_Sky_Color[0] - World_Last_Sky_Color[0]) > 0.0001f) ||
+		(fabsf(World_Sky_Color[1] - World_Last_Sky_Color[1]) > 0.0001f) ||
+		(fabsf(World_Sky_Color[2] - World_Last_Sky_Color[2]) > 0.0001f))
+	{
+		return false;
+	}
+
+	if ((fabsf(World_World_Color[0] - World_Last_World_Color[0]) > 0.0001f) ||
+		(fabsf(World_World_Color[1] - World_Last_World_Color[1]) > 0.0001f) ||
+		(fabsf(World_World_Color[2] - World_Last_World_Color[2]) > 0.0001f))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+static void World_Store_State()
+{
+	World_Last_Enabled = World_Enabled;
+
+	World_Last_Night = World_Nightmode;
+
+	World_Last_Sky_Enabled = World_Sky_Color_Enabled;
+
+	World_Last_World_Enabled = World_World_Color_Enabled;
+
+	World_Last_Sky_Color[0] = World_Sky_Color[0];
+
+	World_Last_Sky_Color[1] = World_Sky_Color[1];
+
+	World_Last_Sky_Color[2] = World_Sky_Color[2];
+
+	World_Last_World_Color[0] = World_World_Color[0];
+
+	World_Last_World_Color[1] = World_World_Color[1];
+
+	World_Last_World_Color[2] = World_World_Color[2];
+}
 
 static void World_Update_Materials()
 {
 	__try
 	{
-		const bool Modulate = ((World_Enabled == true) && ((World_Nightmode == true) || (World_Sky_Color_Enabled == true) || (World_World_Color_Enabled == true)));
-
-		if (Modulate == true)
+		if (Sdk_Game_Is_Ready() == false)
 		{
-			World_Use_Materials = true;
+			return;
 		}
 
-		if (World_Use_Materials == false)
+		if ((World_Modulation_Applied == true) && (World_State_Unchanged() == true))
+		{
+			return;
+		}
+
+		if ((World_Enabled == false) && (World_Modulation_Applied == false))
 		{
 			return;
 		}
@@ -675,22 +760,21 @@ static void World_Update_Materials()
 			World_Materials_Generation = Generation;
 
 			World_Build_Material_Cache();
+
+			World_Modulation_Applied = false;
 		}
 		else if (Generation != World_Materials_Generation)
 		{
 			World_Materials_Generation = Generation;
 
 			World_Build_Material_Cache();
+
+			World_Modulation_Applied = false;
 		}
 
 		for (__int32 i = 0; i < World_Material_Count; i++)
 		{
 			World_Cached_Material& Entry = World_Materials[i];
-
-			if ((Entry.Material == nullptr) || (Sdk_Is_Readable_Range(Entry.Material, sizeof(void*)) == false))
-			{
-				continue;
-			}
 
 			if ((Entry.Is_Sky == false) && (Entry.Is_World == false))
 			{
@@ -703,40 +787,29 @@ static void World_Update_Materials()
 
 			float B = 1.f;
 
-			if (Modulate == true)
+			if (World_Enabled == true)
 			{
 				const bool Use_Sky = ((World_Nightmode == true) || (World_Sky_Color_Enabled == true)) && (Entry.Is_Sky == true);
 
-				const bool Use_World = (World_Nightmode == true) || (World_World_Color_Enabled == true);
+				const bool Use_World = ((World_Nightmode == true) || (World_World_Color_Enabled == true)) && (Entry.Is_World == true);
 
-				if (Use_Sky == true)
+				if ((Use_Sky == true) || (Use_World == true))
 				{
 					if (World_Nightmode == true)
 					{
-						R = 0.04f;
+						R = (Entry.Is_Sky == true) ? 0.04f : 0.10f;
 
-						G = 0.04f;
+						G = (Entry.Is_Sky == true) ? 0.04f : 0.10f;
 
-						B = 0.06f;
+						B = (Entry.Is_Sky == true) ? 0.06f : 0.12f;
 					}
-					else
+					else if (Use_Sky == true)
 					{
 						R = World_Sky_Color[0];
 
 						G = World_Sky_Color[1];
 
 						B = World_Sky_Color[2];
-					}
-				}
-				else if ((Use_World == true) && (Entry.Is_World == true))
-				{
-					if (World_Nightmode == true)
-					{
-						R = 0.10f;
-
-						G = 0.10f;
-
-						B = 0.12f;
 					}
 					else
 					{
@@ -747,25 +820,43 @@ static void World_Update_Materials()
 						B = World_World_Color[2];
 					}
 				}
-				else
+			}
+
+			if (Entry.Applied == true)
+			{
+				if ((fabsf(R - Entry.Last_R) < 0.001f) && (fabsf(G - Entry.Last_G) < 0.001f) && (fabsf(B - Entry.Last_B) < 0.001f))
 				{
 					continue;
 				}
 			}
+			else if ((fabsf(R - 1.f) < 0.001f) && (fabsf(G - 1.f) < 0.001f) && (fabsf(B - 1.f) < 0.001f))
+			{
+				Entry.Last_R = 1.f;
 
-			if ((Entry.Applied == true) && (fabsf(R - Entry.Last_R) < 0.001f) && (fabsf(G - Entry.Last_G) < 0.001f) && (fabsf(B - Entry.Last_B) < 0.001f))
+				Entry.Last_G = 1.f;
+
+				Entry.Last_B = 1.f;
+
+				Entry.Applied = true;
+
+				continue;
+			}
+
+			if ((Entry.Material == nullptr) || (Sdk_Is_Readable_Range(Entry.Material, sizeof(void*)) == false))
 			{
 				continue;
 			}
 
 			void** Vtable = *(void***)Entry.Material;
 
-			if ((Vtable == nullptr) || (Sdk_Is_Readable_Range(Vtable, 29 * sizeof(void*)) == false) || (Vtable[28] == nullptr))
+			if ((Vtable == nullptr) || (Sdk_Is_Readable_Range(Vtable, 29 * sizeof(void*)) == false) || (Vtable[28] == nullptr) || (Vtable[27] == nullptr))
 			{
 				continue;
 			}
 
 			((World_Material_Color_Type)Vtable[28])(Entry.Material, R, G, B);
+			
+			((World_Material_Alpha_Type)Vtable[27])(Entry.Material, 1.0f);
 
 			Entry.Last_R = R;
 
@@ -775,6 +866,10 @@ static void World_Update_Materials()
 
 			Entry.Applied = true;
 		}
+
+		World_Modulation_Applied = true;
+
+		World_Store_State();
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
 	{

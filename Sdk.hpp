@@ -713,7 +713,7 @@ static bool Sdk_Is_Entity_Usable(void* Entity)
 	__int32 Health = 0;
 	unsigned __int8 Dead = 0;
 
-	if ((Sdk_Read_Entity_Basic(Entity, Team, Health, Dead) == false) || (Dead != 0) || (Health <= 0) || ((Team != 2) && (Team != 3)))
+	if ((Sdk_Read_Entity_Basic(Entity, Team, Health, Dead) == false) || ((Team != 2) && (Team != 3)))
 	{
 		return false;
 	}
@@ -981,41 +981,6 @@ static float Vector_Distance(const float A[3], const float B[3])
 	const float Delta_Z = A[2] - B[2];
 
 	return sqrtf(Delta_X * Delta_X + Delta_Y * Delta_Y + Delta_Z * Delta_Z);
-}
-
-static void Sdk_Fix_Movement(UserCmd_Structure* Command, const float Original_Angles[2])
-{
-	if ((Command == nullptr) || (Original_Angles == nullptr))
-	{
-		return;
-	}
-
-	const float Forward = Command->Forward_Move;
-	const float Side = Command->Side_Move;
-
-	if ((Forward != Forward) || (Side != Side))
-	{
-		return;
-	}
-
-	const float Speed = sqrtf(Forward * Forward + Side * Side);
-
-	if ((Speed <= 0.001f) || (Speed != Speed))
-	{
-		return;
-	}
-
-	float Move_Yaw = atan2f(Side, Forward);
-	float Yaw_Delta = (Original_Angles[1] - Command->View_Angles[1]) * (3.14159265f / 180.f) + Move_Yaw;
-
-	const float New_Forward = cosf(Yaw_Delta) * Speed;
-	const float New_Side = sinf(Yaw_Delta) * Speed;
-
-	if ((New_Forward == New_Forward) && (New_Side == New_Side))
-	{
-		Command->Forward_Move = New_Forward;
-		Command->Side_Move = New_Side;
-	}
 }
 
 static void Velocity_Extrapolate(const float Origin[3], const float Velocity[3], float Out[3])
@@ -1606,4 +1571,291 @@ static void Get_Velocity(void* Player, float Out[3])
 	Out[1] = Velocity[1];
 
 	Out[2] = Velocity[2];
+}
+
+typedef bool(__thiscall* Sdk_Get_Player_Info_Type)(void* This, __int32 Index, void* Info);
+
+static __int32 Sdk_Player_Info_Slot = -2;
+
+static void* Sdk_Player_Info_Object;
+
+static __int32 Sdk_Player_Name_Offset = 8;
+
+static bool Sdk_Plausible_Name(const char* Buffer, __int32 Max_Length)
+{
+	for (__int32 i = 0; i < Max_Length; i++)
+	{
+		const unsigned __int8 C = (unsigned __int8)Buffer[i];
+
+		if (C == 0)
+		{
+			return i > 0;
+		}
+
+		if ((C < 0x20) || (C == 0x7F))
+		{
+			return false;
+		}
+	}
+
+	return false;
+}
+
+static void* Sdk_Engine_Client_Object()
+{
+	__try
+	{
+		const unsigned __int32 Address = (unsigned __int32)Engine_Module + 0x425504;
+
+		if (Sdk_Is_Readable_Range((void*)Address, sizeof(void*)) == true)
+		{
+			void** Vtable = *(void***)Address;
+
+			if ((Vtable != nullptr) && (Sdk_Is_Readable_Range(Vtable, sizeof(void*)) == true) && (Sdk_Address_In_Module(Engine_Module, (unsigned __int32)Vtable[0]) == true))
+			{
+				return (void*)Address;
+			}
+		}
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+	}
+
+	return Get_Interface(Engine_Module, "VEngineClient013");
+}
+
+static bool Sdk_Probe_Player_Info_Slot(void* Object, __int32 Slot, __int32 Probe_Index, char* Buffer, __int32* Name_Offset)
+{
+	__try
+	{
+		if (Object == nullptr)
+		{
+			return false;
+		}
+
+		void** Vtable = *(void***)Object;
+
+		if ((Vtable == nullptr) || (Sdk_Is_Readable_Range(Vtable, (Slot + 1) * sizeof(void*)) == false) || (Vtable[Slot] == nullptr))
+		{
+			return false;
+		}
+
+		const unsigned __int32 Function = (unsigned __int32)Vtable[Slot];
+
+		if (Sdk_Address_In_Module(Engine_Module, Function) == false)
+		{
+			return false;
+		}
+
+		unsigned __int8 Info[0x2000] = { 0 };
+
+		const bool Ok = ((Sdk_Get_Player_Info_Type)Function)(Object, Probe_Index, Info);
+
+		if (Ok == false)
+		{
+			return false;
+		}
+
+		if (Sdk_Plausible_Name((const char*)Info, sizeof(Info)) == true)
+		{
+			*Name_Offset = 0;
+
+			return true;
+		}
+
+		if (Sdk_Plausible_Name((const char*)Info + 8, sizeof(Info) - 8) == true)
+		{
+			*Name_Offset = 8;
+
+			return true;
+		}
+
+		return false;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return false;
+	}
+}
+
+static void Sdk_Find_Player_Info_Slot()
+{
+	__try
+	{
+		if (Sdk_Player_Info_Slot != -2)
+		{
+			return;
+		}
+
+		Sdk_Player_Info_Slot = -1;
+
+		if (Engine_Module == nullptr)
+		{
+			return;
+		}
+
+		Sdk_Player_Info_Object = Sdk_Engine_Client_Object();
+
+		if (Sdk_Player_Info_Object == nullptr)
+		{
+			return;
+		}
+
+		char Buffer[0x2000];
+
+		const __int32 Candidates[] = { 9, 8, 10 };
+
+		const __int32 Probes[] = { 1, 2 };
+
+		for (__int32 c = 0; c < 3; c++)
+		{
+			for (__int32 p = 0; p < 2; p++)
+			{
+				__int32 Offset = 8;
+
+				if (Sdk_Probe_Player_Info_Slot(Sdk_Player_Info_Object, Candidates[c], Probes[p], Buffer, &Offset) == true)
+				{
+					Sdk_Player_Info_Slot = Candidates[c];
+
+					Sdk_Player_Name_Offset = Offset;
+
+					return;
+				}
+			}
+		}
+
+		void** Vtable = *(void***)Sdk_Player_Info_Object;
+
+		const unsigned __int32 Anchor = (unsigned __int32)Engine_Module + 0x5DA40;
+
+		if ((Vtable != nullptr) && (Sdk_Is_Readable_Range(Vtable, 64 * sizeof(void*)) == true))
+		{
+			for (__int32 i = 0; i < 63; i++)
+			{
+				if ((unsigned __int32)Vtable[i] != Anchor)
+				{
+					continue;
+				}
+
+				__int32 Offset = 8;
+
+				if (Sdk_Probe_Player_Info_Slot(Sdk_Player_Info_Object, i + 1, 1, Buffer, &Offset) == true)
+				{
+					Sdk_Player_Info_Slot = i + 1;
+
+					Sdk_Player_Name_Offset = Offset;
+
+					return;
+				}
+			}
+		}
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+	}
+}
+
+struct Sdk_Player_Info_Structure
+{
+	unsigned __int8 Padding[8];
+
+	char Name[32];
+
+	__int32 User_ID;
+
+	char Steam_ID[33];
+
+	unsigned __int8 Padding_2[0x27];
+
+	bool Is_Bot;
+
+	unsigned __int8 Padding_3[0x1B];
+};
+
+static bool Sdk_Get_Player_Info(__int32 Index, Sdk_Player_Info_Structure* Info_Out)
+{
+	if ((Info_Out == nullptr) || (Index < 1))
+	{
+		return false;
+	}
+
+	__try
+	{
+		Sdk_Find_Player_Info_Slot();
+
+		if ((Sdk_Player_Info_Slot < 0) || (Sdk_Player_Info_Object == nullptr))
+		{
+			return false;
+		}
+
+		void** Vtable = *(void***)Sdk_Player_Info_Object;
+
+		if ((Vtable == nullptr) || (Sdk_Is_Readable_Range(Vtable, (Sdk_Player_Info_Slot + 1) * sizeof(void*)) == false) || (Vtable[Sdk_Player_Info_Slot] == nullptr))
+		{
+			return false;
+		}
+
+		unsigned __int8 Info[0x2000] = { 0 };
+
+		bool Ok = ((Sdk_Get_Player_Info_Type)Vtable[Sdk_Player_Info_Slot])(Sdk_Player_Info_Object, Index, Info);
+
+		if (Ok == false)
+		{
+			const __int32 Low_Index = Index - 0x1000;
+
+			if (Low_Index <= 0)
+			{
+				return false;
+			}
+
+			memset(Info, 0, sizeof(Info));
+
+			Ok = ((Sdk_Get_Player_Info_Type)Vtable[Sdk_Player_Info_Slot])(Sdk_Player_Info_Object, Low_Index, Info);
+		}
+
+		if (Ok == false)
+		{
+			return false;
+		}
+
+		memset(Info_Out, 0, sizeof(Sdk_Player_Info_Structure));
+
+		memcpy(Info_Out, Info, sizeof(Sdk_Player_Info_Structure));
+
+		return true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return false;
+	}
+}
+
+static bool Vortex_Get_Player_Name(__int32 Index, char* Buffer, __int32 Buffer_Size)
+{
+	if ((Buffer == nullptr) || (Buffer_Size <= 0))
+	{
+		return false;
+	}
+
+	Buffer[0] = '\0';
+
+	Sdk_Player_Info_Structure Info;
+
+	memset(&Info, 0, sizeof(Info));
+
+	if (Sdk_Get_Player_Info(Index, &Info) == false)
+	{
+		return false;
+	}
+
+	const char* Name = Info.Name;
+
+	if (Sdk_Plausible_Name(Name, sizeof(Info.Name)) == false)
+	{
+		return false;
+	}
+
+	strncpy_s(Buffer, Buffer_Size, Name, _TRUNCATE);
+
+	return true;
 }

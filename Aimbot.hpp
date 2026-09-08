@@ -1,6 +1,9 @@
 #pragma once
 
 #include <math.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
 #include <windows.h>
 
 #include "Internal.hpp"
@@ -8,12 +11,12 @@
 #include "Sdk.hpp"
 
 extern bool    Vortex_Aimbot_Enabled;
+extern __int32 Vortex_Aimbot_Key;
 extern __int32 Vortex_Aimbot_Hitbox;
 extern float   Vortex_Aimbot_Fov;
 extern float   Vortex_Aimbot_Smooth;
 extern float   Vortex_Aimbot_Distance;
 extern bool    Vortex_Aimbot_Silent;
-extern bool    Vortex_Aimbot_Visible;
 extern bool    Vortex_Aimbot_Auto_Fire;
 extern bool    Vortex_Aimbot_Prediction;
 extern bool    Vortex_Aimbot_Prioritize_Players;
@@ -22,6 +25,86 @@ extern bool    Vortex_Aimbot_Ignore_Tank;
 extern bool    Vortex_Aimbot_Ignore_Witch;
 
 static bool Rage_Bot_Shoot_Toggle = false;
+
+static void Fix_Silent_Aim_Movement(UserCmd_Structure* Command, const float Original_Angles[2])
+{
+	if ((Command == nullptr) || (Original_Angles == nullptr))
+	{
+		return;
+	}
+
+	const float Delta = (Original_Angles[1] - Command->View_Angles[1]) * (3.14159265f / 180.f);
+
+	if ((Delta > -0.001f) && (Delta < 0.001f))
+	{
+		return;
+	}
+
+	const float Forward = Command->Forward_Move;
+	const float Side = Command->Side_Move;
+
+	float Move_Forward = 0.f;
+	float Move_Side = 0.f;
+
+	const bool Move_Ok = (Forward == Forward) && (Side == Side) && ((Forward != 0.f) || (Side != 0.f));
+
+	if (Move_Ok == true)
+	{
+		Move_Forward = Forward * cosf(Delta) + Side * sinf(Delta);
+
+		Move_Side = -Forward * sinf(Delta) + Side * cosf(Delta);
+	}
+	else
+	{
+		if ((Command->Buttons & 8) != 0)      Move_Forward += 1.f;
+		if ((Command->Buttons & 16) != 0)     Move_Forward -= 1.f;
+		if ((Command->Buttons & 1024) != 0)   Move_Side += 1.f;
+		if ((Command->Buttons & 512) != 0)    Move_Side -= 1.f;
+
+		if ((Move_Forward == 0.f) && (Move_Side == 0.f))
+		{
+			return;
+		}
+
+		const float Length = sqrtf(Move_Forward * Move_Forward + Move_Side * Move_Side);
+
+		Move_Forward /= Length;
+
+		Move_Side /= Length;
+	}
+
+	float Angle = atan2f(Move_Side, Move_Forward) * (180.f / 3.14159265f);
+
+	while (Angle < 0.f)      Angle += 360.f;
+	while (Angle >= 360.f)   Angle -= 360.f;
+
+	__int32 Direction = (__int32)((Angle + 22.5f) / 45.f);
+
+	if (Direction < 0) Direction = 0;
+
+	if (Direction > 7) Direction = 7;
+
+	static const __int32 Direction_Buttons[8] =
+	{
+		8,
+		8 | 1024,
+		1024,
+		16 | 1024,
+		16,
+		16 | 512,
+		512,
+		8 | 512
+	};
+
+	Command->Buttons = (Command->Buttons & ~(8 | 16 | 512 | 1024)) | Direction_Buttons[Direction];
+
+	if (Move_Ok == true)
+	{
+		Command->Forward_Move = Move_Forward;
+
+		Command->Side_Move = Move_Side;
+	}
+}
 
 static void Vortex_Calculate_Aim(const float Eye[3], const float Target[3], float Out[2])
 {
@@ -734,6 +817,9 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 	if ((Vortex_Aimbot_Enabled == false) || (Command == nullptr))
 		return;
 
+	if ((Vortex_Aimbot_Key != 0) && ((GetAsyncKeyState(Vortex_Aimbot_Key) & 0x8000) == 0))
+		return;
+
 	if (Vortex_Session_Is_Ready() == false)
 		return;
 
@@ -796,14 +882,15 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 
 			if (Refresh_Validation == true)
 			{
+				Cached_Kind = Get_Entity_Kind(Vortex_Cached_Target);
+
 				Cached_Basic_Ok =
 					Sdk_Is_Entity_Usable(Vortex_Cached_Target) &&
 					Sdk_Read_Entity_Basic(Vortex_Cached_Target, Cached_Team, Cached_Health, Cached_Dead) &&
+					((Cached_Dead == 0) && (*(unsigned __int8*)((unsigned __int8*)Vortex_Cached_Target + 0x165) == 0) && ((Cached_Kind == Kind_Common) || (Cached_Health > 0))) &&
 					((Cached_Team != Local_Team) && (Cached_Team == 2 || Cached_Team == 3)) &&
-					((Cached_Team != 3) || (Sdk_Read_Entity_Ghost(Vortex_Cached_Target, Cached_Ghost) && Cached_Ghost == 0));
-
-				Cached_Kind = Cached_Basic_Ok ? Get_Entity_Kind(Vortex_Cached_Target) : Kind_Invalid;
-				Cached_Basic_Ok = Cached_Basic_Ok && (Cached_Kind != Kind_Invalid) && (Cached_Kind != 10);
+					((Cached_Team != 3) || (Cached_Kind == Kind_Common) || (Sdk_Read_Entity_Ghost(Vortex_Cached_Target, Cached_Ghost) && Cached_Ghost == 0)) &&
+					(Cached_Kind != Kind_Invalid) && (Cached_Kind != Kind_Rock);
 				Vortex_Cached_Validation_Team = Cached_Team;
 				Vortex_Cached_Validation_Health = Cached_Health;
 				Vortex_Cached_Validation_Dead = Cached_Dead;
@@ -847,33 +934,30 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 					const float Cached_Fov = Vortex_Angles_Field_Of_View(View_Angles, Cached_Angles);
 					bool Cached_Visible = true;
 
-					if (Vortex_Aimbot_Visible == true)
-					{
-						const float Visibility_Dx = Cached_Aim[0] - Vortex_Cached_Visibility_Point[0];
-						const float Visibility_Dy = Cached_Aim[1] - Vortex_Cached_Visibility_Point[1];
-						const float Visibility_Dz = Cached_Aim[2] - Vortex_Cached_Visibility_Point[2];
-						const unsigned __int32 Visibility_Age = (unsigned __int32)(Now - Vortex_Cached_Visibility_At);
-						const bool Reuse_Visibility =
-							(Vortex_Cached_Visibility_Valid == true) &&
-							(Vortex_Cached_Visibility_Target == Vortex_Cached_Target) &&
-							(Visibility_Age <= Vortex_Visibility_Cache_Milliseconds) &&
-							((Visibility_Dx * Visibility_Dx + Visibility_Dy * Visibility_Dy + Visibility_Dz * Visibility_Dz) <= 16.f * 16.f);
+					const float Visibility_Dx = Cached_Aim[0] - Vortex_Cached_Visibility_Point[0];
+					const float Visibility_Dy = Cached_Aim[1] - Vortex_Cached_Visibility_Point[1];
+					const float Visibility_Dz = Cached_Aim[2] - Vortex_Cached_Visibility_Point[2];
+					const unsigned __int32 Visibility_Age = (unsigned __int32)(Now - Vortex_Cached_Visibility_At);
+					const bool Reuse_Visibility =
+						(Vortex_Cached_Visibility_Valid == true) &&
+						(Vortex_Cached_Visibility_Target == Vortex_Cached_Target) &&
+						(Visibility_Age <= Vortex_Visibility_Cache_Milliseconds) &&
+						((Visibility_Dx * Visibility_Dx + Visibility_Dy * Visibility_Dy + Visibility_Dz * Visibility_Dz) <= 16.f * 16.f);
 
-						if (Reuse_Visibility == true)
-						{
-							Cached_Visible = Vortex_Cached_Visibility_Result;
-						}
-						else
-						{
-							Cached_Visible = Vortex_Is_Visible(Local_Player, Vortex_Cached_Target, Eye, Cached_Aim);
-							Vortex_Cached_Visibility_Target = Vortex_Cached_Target;
-							Vortex_Cached_Visibility_Point[0] = Cached_Aim[0];
-							Vortex_Cached_Visibility_Point[1] = Cached_Aim[1];
-							Vortex_Cached_Visibility_Point[2] = Cached_Aim[2];
-							Vortex_Cached_Visibility_At = Now;
-							Vortex_Cached_Visibility_Result = Cached_Visible;
-							Vortex_Cached_Visibility_Valid = true;
-						}
+					if (Reuse_Visibility == true)
+					{
+						Cached_Visible = Vortex_Cached_Visibility_Result;
+					}
+					else
+					{
+						Cached_Visible = Vortex_Is_Visible(Local_Player, Vortex_Cached_Target, Eye, Cached_Aim);
+						Vortex_Cached_Visibility_Target = Vortex_Cached_Target;
+						Vortex_Cached_Visibility_Point[0] = Cached_Aim[0];
+						Vortex_Cached_Visibility_Point[1] = Cached_Aim[1];
+						Vortex_Cached_Visibility_Point[2] = Cached_Aim[2];
+						Vortex_Cached_Visibility_At = Now;
+						Vortex_Cached_Visibility_Result = Cached_Visible;
+						Vortex_Cached_Visibility_Valid = true;
 					}
 
 					if ((Cached_Fov <= Vortex_Aimbot_Fov) && (Cached_Visible == true))
@@ -886,6 +970,7 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 						Best_Target_Origin[2] = Cached_Origin[2];
 						Best_Target = Vortex_Cached_Target;
 						Best_Target_Priority = Vortex_Cached_Target_Priority;
+						Best_Target_Kind = Vortex_Cached_Target_Kind;
 						Min_Fov = Cached_Fov;
 						Refresh_Target = false;
 					}
@@ -926,7 +1011,15 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 
 			__int32 Team = 0;
 			__int32 Health = 0;
-			unsigned __int8 Dead = 0;			if ((Sdk_Read_Entity_Basic_Fast(Entity, Team, Health, Dead) == false) || (Dead != 0) || (Health <= 0))
+			unsigned __int8 Dead = 0;
+			Sdk_Read_Entity_Basic_Fast(Entity, Team, Health, Dead);
+
+			const __int32 Kind = Get_Entity_Kind_Fast(Entity);
+
+			if ((Kind == Kind_Invalid) || (Kind == Kind_Rock))
+				continue;
+
+			if ((Dead != 0) || (*(unsigned __int8*)((unsigned __int8*)Entity + 0x165) != 0) || ((Kind != Kind_Common) && (Health <= 0)))
 				continue;
 
 			if ((Team != 2) && (Team != 3))
@@ -935,18 +1028,15 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 			if (Team == Local_Team)
 			continue;
 
-			if (Team == 3)
+			if ((Team == 3) && (Kind != Kind_Common))
 			{
 				unsigned __int8 Ghost = 0;
 
 				if ((Sdk_Read_Entity_Ghost_Fast(Entity, Ghost) == false) || (Ghost != 0))
+				{
 					continue;
+				}
 			}
-
-			const __int32 Kind = Get_Entity_Kind_Fast(Entity);
-
-			if ((Kind == Kind_Invalid) || (Kind == 10))
-				continue;
 
 			const bool Ignore_Target =
 				((Vortex_Aimbot_Ignore_Common == true) && (Kind == Kind_Common)) ||
@@ -980,7 +1070,7 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 			const float Rough_Fov = Vortex_Angles_Field_Of_View(View_Angles, Rough_Angles);
 			if (Rough_Fov > (Vortex_Aimbot_Fov + 5.f))
 				continue;
-			
+
 			const __int32 Candidate_Priority = Vortex_Get_Target_Priority(Kind);
 			if ((Best_Target_Priority >= 0) &&
 				((Candidate_Priority < Best_Target_Priority) ||
@@ -992,7 +1082,7 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 			if ((Rough_Fov <= (Vortex_Aimbot_Fov + 5.f)) &&
 				((Candidate_Priority > Best_Target_Priority) ||
 				 ((Candidate_Priority == Best_Target_Priority) && (Rough_Fov < Min_Fov))) &&
-				((Vortex_Aimbot_Visible == false) || (Vortex_Is_Visible(Local_Player, Entity, Eye, Rough_Position) == true)))
+				(Vortex_Is_Visible(Local_Player, Entity, Eye, Rough_Position) == true))
 			{
 				Min_Fov = Rough_Fov;
 				Best_Target_Priority = Candidate_Priority;
@@ -1006,6 +1096,7 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 				Best_Aim[2] = Rough_Position[2];
 			}
 		}
+
 		}
 
 		if (Best_Target != nullptr)
@@ -1072,7 +1163,7 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 				Vortex_Cached_Visibility_Point[2] = Best_Aim[2];
 				Vortex_Cached_Visibility_At = Now;
 				Vortex_Cached_Visibility_Result = true;
-				Vortex_Cached_Visibility_Valid = Vortex_Aimbot_Visible;
+				Vortex_Cached_Visibility_Valid = true;
 			}
 			else
 			{
@@ -1111,6 +1202,11 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 
 		Command->View_Angles[2] = 0.f;
 
+		if (Vortex_Aimbot_Silent == true)
+		{
+			Fix_Silent_Aim_Movement(Command, View_Angles);
+		}
+
 		if (Vortex_Aimbot_Auto_Fire == true)
 		{
 			void* Weapon = Get_Active_Weapon((void*)Local_Player);
@@ -1148,10 +1244,6 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 			}
 		}
 
-		if (Vortex_Aimbot_Silent == true)
-		{
-			Sdk_Fix_Movement(Command, View_Angles);
-		}
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
