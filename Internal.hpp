@@ -131,6 +131,9 @@ extern bool Air_Stuck_Enabled;
 extern __int32 Air_Stuck_Key;
 extern bool Roll_TP_Enabled;
 extern __int32 Roll_TP_Key;
+extern bool Speed_Hack_Enabled;
+extern __int32 Speed_Hack_Factor;
+extern __int32 Speed_Hack_Key;
 extern bool Charger_Turn_Enabled;
 extern unsigned __int8  Charger_Turn_Original_Byte;
 extern bool            Charger_Turn_Patched;
@@ -173,6 +176,20 @@ extern bool Vortex_Aimbot_Prioritize_Players;
 extern bool Vortex_Aimbot_Ignore_Common;
 extern bool Vortex_Aimbot_Ignore_Tank;
 extern bool Vortex_Aimbot_Ignore_Witch;
+
+extern bool Aim_Infected_Enabled;
+
+extern __int32 Aim_Infected_Key;
+
+extern float Aim_Infected_Fov;
+
+extern float Aim_Infected_Smooth;
+
+extern float Aim_Infected_Distance;
+
+extern bool Aim_Infected_Target_Head;
+
+extern bool Aim_Infected_Silent;
 
 extern bool Vortex_No_Spread_Enabled;
 

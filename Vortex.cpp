@@ -30,6 +30,8 @@
 
 #include "NameStealer.hpp"
 
+#include "../Lua/LuaHost.hpp"
+
 HMODULE Client_Module;
 
 HMODULE Engine_Module;
@@ -85,6 +87,9 @@ bool Air_Stuck_Enabled = false;
 __int32 Air_Stuck_Key = 'X';
 bool Roll_TP_Enabled = false;
 __int32 Roll_TP_Key = 'P';
+bool Speed_Hack_Enabled = false;
+__int32 Speed_Hack_Factor = 10;
+__int32 Speed_Hack_Key = VK_SHIFT;
 bool Charger_Turn_Enabled = false;
 unsigned __int8  Charger_Turn_Original_Byte = 0;
 bool            Charger_Turn_Patched = false;
@@ -140,6 +145,20 @@ bool Vortex_Aimbot_Ignore_Common = false;
 bool Vortex_Aimbot_Ignore_Tank;
 
 bool Vortex_Aimbot_Ignore_Witch;
+
+bool Aim_Infected_Enabled = false;
+
+__int32 Aim_Infected_Key = 'Q';
+
+float Aim_Infected_Fov = 180.f;
+
+float Aim_Infected_Smooth = 1.f;
+
+float Aim_Infected_Distance = 1080.f;
+
+bool Aim_Infected_Target_Head = true;
+
+bool Aim_Infected_Silent = false;
 
 bool Vortex_No_Spread_Enabled;
 
@@ -285,6 +304,8 @@ static DWORD WINAPI Main_Thread(void*)
 	Install_Vortex_No_Spread();
 
 	Install_Chams();
+
+	LuaHost_Init();
 
 	Initialize_D3D9();
 

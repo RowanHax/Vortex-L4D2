@@ -833,7 +833,7 @@ static void Update_Vortex_Aimbot(UserCmd_Structure* Command)
 		__int32 Local_Health = 0;
 		unsigned __int8 Local_Dead = 0;
 
-		if ((Local_Player == nullptr) || (Sdk_Read_Entity_Basic(Local_Player, Local_Team, Local_Health, Local_Dead) == false) || (Local_Dead != 0) || (Local_Health <= 0))
+		if ((Local_Player == nullptr) || (Sdk_Read_Entity_Basic(Local_Player, Local_Team, Local_Health, Local_Dead) == false) || (Local_Dead != 0) || (Local_Health <= 0) || (Local_Team != 2))
 			return;
 
 		float Local_Origin[3];

@@ -8,6 +8,8 @@
 
 #include "Aimbot.hpp"
 
+#include "AimInfected.hpp"
+
 #include "NoSpread.hpp"
 
 #include "Strafe.hpp"
@@ -23,6 +25,8 @@
 #include "ChatSpammer.hpp"
 
 #include "World.hpp"
+
+#include "../Lua/LuaHost.hpp"
 
 typedef bool(__fastcall* CreateMove_Type)(void* Ecx, void* Edx, float Input_Sample_Frametime, UserCmd_Structure* Command);
 
@@ -230,6 +234,8 @@ static bool __fastcall Override_View_Hook(void* Ecx, void* Edx, void* View_Setup
 		}
 	}
 
+	LuaHost_OnOverrideView(View_Setup);
+
 	return Result;
 }
 
@@ -260,6 +266,8 @@ static bool __fastcall CreateMove_Hook(void* Ecx, void* Edx, float Input_Sample_
 
 	Update_Vortex_Aimbot(Command);
 
+	Update_Aim_Infected(Command);
+
 	Update_Auto_Pistol(Command);
 
 	Update_Air_Strafe(Command);
@@ -275,8 +283,11 @@ static bool __fastcall CreateMove_Hook(void* Ecx, void* Edx, float Input_Sample_
 
 	Air_Stuck_Apply(Command);
 
+	LuaHost_OnCreateMove(Command);
+
 	if ((Command != nullptr) &&
 		(((Vortex_Aimbot_Enabled == true) && (Vortex_Aimbot_Silent == true)) ||
+		 ((Aim_Infected_Enabled == true) && (Aim_Infected_Silent == true)) ||
 		 ((Anti_Aim_Enabled == true) && (Anti_Aim_Silent == true))))
 	{
 		return false;

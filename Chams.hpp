@@ -6,6 +6,8 @@
 
 #include "D3D9.hpp"
 
+#include "../Lua/LuaHost.hpp"
+
 struct Draw_Model_State_Structure
 {
 	char Padding[0x100];
@@ -400,6 +402,11 @@ static void __fastcall Draw_Model_Execute_Hook(void* Ecx, void* Edx, const Draw_
 		__except (GetExceptionCode() == 0xC0000005 ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
 		{
 		}
+	}
+
+	if (void* Lua_Material = LuaHost_BeginDrawModel(Info.Entity_Index, Info.Model))
+	{
+		((Forced_Override_Type)(*(void***)Model_Render)[1])(Model_Render, 0, Lua_Material, 0);
 	}
 
 	Original_Draw_Model_Execute(Ecx, Edx, State, Info, Bone_To_World);

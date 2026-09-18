@@ -12,6 +12,8 @@
 
 #include "Sdk.hpp"
 
+#include "../Lua/LuaChatHook.hpp"
+
 struct IGameEvent
 {
 	void** Vtable;
@@ -79,6 +81,8 @@ static void Chat_Spy_Push_Line(const char* Text, unsigned __int32 Color)
 
 static void Chat_Spy_Process_Event(IGameEvent* Event);
 
+static void Chat_Spy_Forward_To_Lua(IGameEvent* Event);
+
 class Chat_Spy_Listener_Class
 {
 public:
@@ -88,6 +92,8 @@ public:
 
 	virtual void Fire_Game_Event(IGameEvent* Event)
 	{
+		Chat_Spy_Forward_To_Lua(Event);
+
 		Chat_Spy_Process_Event(Event);
 	}
 
@@ -499,6 +505,163 @@ static void Chat_Spy_Process_Hud(IGameEvent* Event)
 	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
 	}
+}
+
+static void Chat_Spy_Forward_To_Lua(IGameEvent* Event)
+{
+	if ((Event == nullptr) || (Lua_ChatDispatchFn == nullptr))
+	{
+		return;
+	}
+
+	static bool In_Dispatch = false;
+
+	if (In_Dispatch == true)
+	{
+		return;
+	}
+
+	__int32 Entity_Index = -1;
+	const char* Name = "";
+	const char* Text = "";
+	__int32 Team = 0;
+	int Team_Only = 0;
+	int Vote = (int)Lua_ChatVote_None;
+
+	__try
+	{
+		if (Event->Vtable == nullptr)
+		{
+			return;
+		}
+
+		const char* Event_Name = Event->Get_Name();
+
+		if (Event_Name == nullptr)
+		{
+			return;
+		}
+
+		const bool Is_Vote_Yes = (strcmp(Event_Name, "vote_cast_yes") == 0);
+		const bool Is_Vote_No = (strcmp(Event_Name, "vote_cast_no") == 0);
+		const bool Is_Team_Say = (strcmp(Event_Name, "player_say_team") == 0);
+		const bool Is_Say = (strcmp(Event_Name, "player_say") == 0) || Is_Team_Say;
+		const bool Is_Vote = Is_Vote_Yes || Is_Vote_No;
+
+		if ((Is_Say == false) && (Is_Vote == false))
+		{
+			return;
+		}
+
+		const unsigned __int32 Local_Player = Get_Local_Player();
+
+		if (Local_Player == 0)
+		{
+			return;
+		}
+
+		const __int32 Local_User_ID = *(__int32*)(Local_Player + 0x58);
+
+		if (Is_Vote == true)
+		{
+			Entity_Index = Event->Get_Int("entityid", 0xffffffff);
+		}
+		else
+		{
+			const __int32 User_ID = Event->Get_Int("userid", 0);
+
+			const char* Event_Name_Field = Event->Get_String("name", "");
+			const char* Event_Text = Event->Get_String("text", "");
+
+			if (User_ID == 0)
+			{
+				return;
+			}
+
+			if (User_ID == Local_User_ID)
+			{
+				return;
+			}
+
+			if ((Event_Text == nullptr) || (Event_Text[0] == '\0'))
+			{
+				return;
+			}
+
+			Name = (Event_Name_Field != nullptr) ? Event_Name_Field : "";
+			Text = Event_Text;
+
+			__try
+			{
+				Entity_Index = Get_Player_For_User_ID((void*)((unsigned __int32)Engine_Module + Engine_Client_Object_Offset), nullptr, User_ID);
+			}
+			__except (EXCEPTION_EXECUTE_HANDLER)
+			{
+				return;
+			}
+		}
+
+		if (Entity_Index < 1)
+		{
+			return;
+		}
+
+		void* Entity = nullptr;
+
+		__try
+		{
+			Entity = *(void**)((unsigned __int32)Client_Module + 0x74A574 + (Entity_Index - 0x1001) * 16);
+		}
+		__except (EXCEPTION_EXECUTE_HANDLER)
+		{
+			return;
+		}
+
+		if (Entity == nullptr)
+		{
+			return;
+		}
+
+		Team = *(__int32*)((unsigned __int32)Entity + 0xE4);
+
+		if ((Name == nullptr) || (Name[0] == '\0'))
+		{
+			static char Fallback_Name[64];
+
+			if (Vortex_Get_Player_Name(Entity_Index, Fallback_Name, sizeof(Fallback_Name)) == true)
+			{
+				Name = Fallback_Name;
+			}
+			else
+			{
+				Name = "(unknown)";
+			}
+		}
+
+		Team_Only = Is_Team_Say ? 1 : 0;
+		Vote = Is_Vote_Yes ? (int)Lua_ChatVote_Yes : (Is_Vote_No ? (int)Lua_ChatVote_No : (int)Lua_ChatVote_None);
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return;
+	}
+
+	if (Entity_Index < 1)
+	{
+		return;
+	}
+
+	In_Dispatch = true;
+
+	__try
+	{
+		Lua_ChatDispatchFn(Entity_Index, Name, Text, Team, Team_Only, Vote);
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+	}
+
+	In_Dispatch = false;
 }
 
 static void Chat_Spy_Process_Event(IGameEvent* Event)

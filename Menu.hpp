@@ -12,6 +12,10 @@
 
 #include "LagExploit.hpp"
 
+#include "AimInfected.hpp"
+
+#include "../Lua/LuaAPI.hpp"
+
 static ImVec4 M_Color(float R, float G, float B, float A = 1.f)
 {
 	return ImVec4(R / 255.f, G / 255.f, B / 255.f, A);
@@ -105,17 +109,19 @@ static void Setup_Menu_Style()
 
 static __int32 Current_Tab = 0;
 
-static const struct { const char* Label; int Group; __int32 Tab; } Sidebar_Entries[9] =
+static const struct { const char* Label; int Group; __int32 Tab; } Sidebar_Entries[11] =
 {
 	{ "Aimbot",         0, 0 },
-	{ "Anti-Aim",       0, 7 },
-	{ "ESP",            1, 1 },
-	{ "Chams",          1, 2 },
-	{ "World",          1, 8 },
-	{ "Exploits",       2, 3 },
-	{ "Misc",           2, 4 },
-	{ "Configs",        3, 5 },
-	{ "About",          3, 6 },
+	{ "Aim Infected",   0, 1 },
+	{ "Anti-Aim",       0, 2 },
+	{ "ESP",            1, 3 },
+	{ "Chams",          1, 4 },
+	{ "World",          1, 5 },
+	{ "Exploits",       2, 6 },
+	{ "Misc",           2, 7 },
+	{ "Configs",        3, 8 },
+	{ "Luas",           3, 9 },
+	{ "About",          3, 10 },
 };
 
 static void Sidebar_Entry(__int32 Index)
@@ -176,27 +182,29 @@ static void Show_Sidebar()
 	ImGui::SetCursorPos(ImVec2(0.f, 108.f));
 	Sidebar_Group_Label("Aim");
 
-	ImGui::SetCursorPosY(128.f); Sidebar_Entry(0);
-	ImGui::SetCursorPosY(154.f); Sidebar_Entry(1);
+	ImGui::SetCursorPosY(126.f); Sidebar_Entry(0);
+	ImGui::SetCursorPosY(152.f); Sidebar_Entry(1);
+	ImGui::SetCursorPosY(178.f); Sidebar_Entry(2);
 
-	ImGui::SetCursorPos(ImVec2(0.f, 190.f));
+	ImGui::SetCursorPos(ImVec2(0.f, 214.f));
 	Sidebar_Group_Label("Visuals");
 
-	ImGui::SetCursorPosY(210.f); Sidebar_Entry(2);
-	ImGui::SetCursorPosY(236.f); Sidebar_Entry(3);
-	ImGui::SetCursorPosY(262.f); Sidebar_Entry(4);
+	ImGui::SetCursorPosY(232.f); Sidebar_Entry(3);
+	ImGui::SetCursorPosY(258.f); Sidebar_Entry(4);
+	ImGui::SetCursorPosY(284.f); Sidebar_Entry(5);
 
-	ImGui::SetCursorPos(ImVec2(0.f, 306.f));
+	ImGui::SetCursorPos(ImVec2(0.f, 318.f));
 	Sidebar_Group_Label("Miscellaneous");
 
-	ImGui::SetCursorPosY(326.f); Sidebar_Entry(5);
-	ImGui::SetCursorPosY(352.f); Sidebar_Entry(6);
+	ImGui::SetCursorPosY(336.f); Sidebar_Entry(6);
+	ImGui::SetCursorPosY(362.f); Sidebar_Entry(7);
 
 	ImGui::SetCursorPos(ImVec2(0.f, 396.f));
 	Sidebar_Group_Label("System");
 
-	ImGui::SetCursorPosY(416.f); Sidebar_Entry(7);
-	ImGui::SetCursorPosY(442.f); Sidebar_Entry(8);
+	ImGui::SetCursorPosY(414.f); Sidebar_Entry(8);
+	ImGui::SetCursorPosY(440.f); Sidebar_Entry(9);
+	ImGui::SetCursorPosY(466.f); Sidebar_Entry(10);
 
 	{
 		const float Strip_Y = ImGui::GetWindowHeight() - 42.f;
@@ -504,6 +512,35 @@ static void Show_Tab_Vortex()
 	End_Mini_Panel();
 }
 
+static void Show_Tab_Aim_Infected()
+{
+	float Cell_W, Cell_H, Gap;
+	Panel_Grid_Size(Cell_W, Cell_H, Gap);
+
+	Panel_Pos(0.f, 0.f, Cell_W, Cell_H, Gap);
+	Begin_Mini_Panel("MP_AimInfected_Main", "Aim Infected", Cell_W, Cell_H);
+	ImGui::Checkbox("Enable", &Aim_Infected_Enabled);
+	Key_Bind_Control(&Aim_Infected_Key, "Always", "Activation key");
+	ImGui::BeginDisabled(Aim_Infected_Enabled == false);
+	ImGui::Checkbox("Silent", &Aim_Infected_Silent);
+	ImGui::Checkbox("Target head", &Aim_Infected_Target_Head);
+	ImGui::EndDisabled();
+	End_Mini_Panel();
+
+	Panel_Pos(1.f, 0.f, Cell_W, Cell_H, Gap);
+	Begin_Mini_Panel("MP_AimInfected_Aim", "Aim", Cell_W, Cell_H);
+	ImGui::BeginDisabled(Aim_Infected_Enabled == false);
+	ImGui::SliderFloat("FOV", &Aim_Infected_Fov, 1.f, 180.f, "%.0f");
+	Red_Border_On_Focus();
+	ImGui::SliderFloat("Smooth", &Aim_Infected_Smooth, 1.f, 20.f, "%.0f");
+	Red_Border_On_Focus();
+	ImGui::SliderFloat("Distance", &Aim_Infected_Distance, 100.f, 8012.f, "%.0f");
+	Red_Border_On_Focus();
+	ImGui::EndDisabled();
+	End_Mini_Panel();
+
+}
+
 static void Show_Tab_AntiAim()
 {
 	float Cell_W, Cell_H, Gap;
@@ -680,7 +717,6 @@ static void Show_Tab_Exploits()
 	ImGui::Checkbox("Interact", &Tick_Manipulation_Interact);
 	ImGui::EndDisabled();
 	Key_Bind_Control(&Rapid_Fire_Bind_Key, "None", "Rapid Fire key");
-	ImGui::TextColored(M_Color(0x80, 0x80, 0x88), "Hold while attacking to trigger.");
 	ImGui::Dummy(ImVec2(0.f, 4.f));	
 	End_Mini_Panel();
 
@@ -689,7 +725,6 @@ static void Show_Tab_Exploits()
 	ImGui::Checkbox("Enable Lag Exploit", &Lag_Exploit_Enabled);
 	ImGui::BeginDisabled(Lag_Exploit_Enabled == false);
 	Key_Bind_Control(&Lag_Exploit_Key, "Always", "Lag key");
-	ImGui::TextColored(M_Color(0x80, 0x80, 0x88), "Hold to lag. Always = lags constantly.");
 	ImGui::SliderInt("Lag Value", &Lag_Exploit_Value, 10, 100000);
 	Red_Border_On_Focus();
 	ImGui::EndDisabled();
@@ -721,8 +756,13 @@ static void Show_Tab_Exploits()
 	End_Mini_Panel();
 
 	Panel_Pos(1.f, 2.f, Cell_W, Cell_H, Gap);
-	Begin_Mini_Panel("MP_Exploits_Info", "Info", Cell_W, Cell_H);
-	ImGui::TextColored(M_Color(0x80, 0x80, 0x88), "TP needs fix.");
+	Begin_Mini_Panel("MP_Exploits_Speed", "Speedhack", Cell_W, Cell_H);
+	ImGui::Checkbox("Enable", &Speed_Hack_Enabled);
+	ImGui::BeginDisabled(Speed_Hack_Enabled == false);
+	ImGui::SliderInt("Factor", &Speed_Hack_Factor, 1, 30);
+	Red_Border_On_Focus();
+	Key_Bind_Control(&Speed_Hack_Key, "Always", "Speed key");
+	ImGui::EndDisabled();
 	End_Mini_Panel();
 }
 
@@ -855,7 +895,7 @@ static void Show_Tab_About()
 
 	Panel_Pos(0.f, 0.f, Cell_W, Cell_H, Gap);
 	Begin_Mini_Panel("MP_About_Main", "Vortex", Cell_W, Cell_H);
-	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Beta (1.2)");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Beta (1.3)");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Legit, Semi Rage and Rage cheat");
 	ImGui::TextColored(M_Color(0x80, 0x80, 0x88), "all features are made for Vortex");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Developed by Rowan <3");
@@ -866,17 +906,19 @@ static void Show_Tab_About()
 	Panel_Pos(1.f, 0.f, Cell_W, Cell_H, Gap);
 	Begin_Mini_Panel("MP_About_Features", "Features", Cell_W, Cell_H);
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Aimbot");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Aim Infected");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Anti-Aim");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "No Spread/No Recoil");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Auto Bunnyhop");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Strafe");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "ESP");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Chams");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "SpeedHack");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Rapid Fire");
-	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Lag Exploit");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Lag Exploit (needs fix)");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Airstuck");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Charger Turn");
-	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Teleport (need camera fix)");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Teleport");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Nightmode");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Fog Controller");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Skybox Color");
@@ -890,7 +932,13 @@ static void Show_Tab_About()
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Name Stealer");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Third Person");
 	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Config System");
+	ImGui::TextColored(M_Color(0xE0, 0xE0, 0xE4), "Lua API");
 	End_Mini_Panel();
+}
+
+static void Show_Tab_Lua()
+{
+	Render_Lua_Section();
 }
 
 static void Show_Menu()
@@ -924,13 +972,15 @@ static void Show_Menu()
 	switch (Current_Tab)
 	{
 	case 0:  Show_Tab_Vortex();       break;
-	case 1:  Show_Tab_Visuals();      break;
-	case 2:  Show_Tab_Chams();        break;
-	case 3:  Show_Tab_Exploits();     break;
-	case 4:  Show_Tab_Misc();         break;
-	case 5:  Show_Tab_Configs();      break;
-	case 7:  Show_Tab_AntiAim();      break;
-	case 8:  Show_Tab_World();        break;
+	case 1:  Show_Tab_Aim_Infected(); break;
+	case 2:  Show_Tab_AntiAim();      break;
+	case 3:  Show_Tab_Visuals();      break;
+	case 4:  Show_Tab_Chams();        break;
+	case 5:  Show_Tab_World();        break;
+	case 6:  Show_Tab_Exploits();     break;
+	case 7:  Show_Tab_Misc();         break;
+	case 8:  Show_Tab_Configs();      break;
+	case 9:  Show_Tab_Lua();          break;
 	default: Show_Tab_About();        break;
 	}
 

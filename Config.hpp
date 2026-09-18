@@ -102,6 +102,20 @@ static Config_Entry Config_Table[] =
 
 	{ "Vortex_Aimbot_Ignore_Witch", (void*)&Vortex_Aimbot_Ignore_Witch, 0 },
 
+	{ "Aim_Infected_Enabled", (void*)&Aim_Infected_Enabled, 0 },
+
+	{ "Aim_Infected_Key", (void*)&Aim_Infected_Key, 1 },
+
+	{ "Aim_Infected_Fov", (void*)&Aim_Infected_Fov, 2 },
+
+	{ "Aim_Infected_Smooth", (void*)&Aim_Infected_Smooth, 2 },
+
+	{ "Aim_Infected_Distance", (void*)&Aim_Infected_Distance, 2 },
+
+	{ "Aim_Infected_Target_Head", (void*)&Aim_Infected_Target_Head, 0 },
+
+	{ "Aim_Infected_Silent", (void*)&Aim_Infected_Silent, 0 },
+
 	{ "Vortex_No_Spread_Enabled", (void*)&Vortex_No_Spread_Enabled, 0 },
 
 	{ "Lag_Exploit_Enabled", (void*)&Lag_Exploit_Enabled, 0 },
@@ -117,6 +131,12 @@ static Config_Entry Config_Table[] =
 	{ "Roll_TP_Enabled", (void*)&Roll_TP_Enabled, 0 },
 
 	{ "Roll_TP_Key", (void*)&Roll_TP_Key, 1 },
+
+	{ "Speed_Hack_Enabled", (void*)&Speed_Hack_Enabled, 0 },
+
+	{ "Speed_Hack_Factor", (void*)&Speed_Hack_Factor, 1 },
+
+	{ "Speed_Hack_Key", (void*)&Speed_Hack_Key, 1 },
 
 	{ "Charger_Turn_Enabled", (void*)&Charger_Turn_Enabled, 0 },
 

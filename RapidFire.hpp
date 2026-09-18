@@ -12,6 +12,10 @@
 
 #include "NoSpread.hpp"
 
+#include "SpeedHack.hpp"
+
+#include "../Lua/LuaHost.hpp"
+
 const unsigned __int32 Rapid_Fire_Pointer_Offset = 4352236;
 
 typedef void(__cdecl* CL_Move_Type)(float Accumulated_Extra_Samples, bool Final_Tick);
@@ -443,6 +447,87 @@ static void Redirected_Update_Animations()
 	Global_Variables->Time = Previous_Time;
 }
 
+static unsigned __int8 Original_Update_Animations_Bytes[6];
+
+static bool Update_Animations_Redirected;
+
+static bool Rapid_Fire_Is_Function_Start(unsigned __int32 Address)
+{
+	if (Address == 0)
+	{
+		return false;
+	}
+
+	__try
+	{
+		const unsigned __int8 First = *(unsigned __int8*)Address;
+
+		return (First == 0x55) || (First == 0x8B) || (First == 0x53) || (First == 0x57) || (First == 0x56);
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return false;
+	}
+}
+
+static void Redirect_Update_Animations(bool Redirect)
+{
+	if ((Client_Module == nullptr) || (Redirect == Update_Animations_Redirected))
+	{
+		return;
+	}
+
+	if ((Redirect == true) && (Rapid_Fire_Is_Function_Start((unsigned __int32)Client_Module + 205296) == false))
+	{
+		return;
+	}
+
+	__try
+	{
+		unsigned __int8* Target = (unsigned __int8*)Client_Module + 205296;
+
+		DWORD Previous_Access_Rights;
+
+		VirtualProtect(Target, sizeof(Original_Update_Animations_Bytes), PAGE_EXECUTE_READWRITE, &Previous_Access_Rights);
+
+		if (Redirect == true)
+		{
+			memcpy(Original_Update_Animations_Bytes, Target, sizeof(Original_Update_Animations_Bytes));
+
+			Target[0] = 0x68;
+
+			*(unsigned __int32*)(Target + 1) = (unsigned __int32)Redirected_Update_Animations;
+
+			Target[5] = 0xC3;
+		}
+		else
+		{
+			memcpy(Target, Original_Update_Animations_Bytes, sizeof(Original_Update_Animations_Bytes));
+		}
+
+		VirtualProtect(Target, sizeof(Original_Update_Animations_Bytes), Previous_Access_Rights, &Previous_Access_Rights);
+
+		Update_Animations_Redirected = Redirect;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+	}
+}
+
+static void* Original_Interpolate;
+
+static __int8 __fastcall Redirected_Interpolate_Hook(void* Entity, void* Edx, void* Unknown_Parameter)
+{
+	void* Local_Player = *(void**)((unsigned __int32)Client_Module + 7498712);
+
+	if ((Rapid_Fire_Active() == false) || (Local_Player == nullptr) || (Entity == Local_Player))
+	{
+		return ((__int8(__thiscall*)(void*, void*))Original_Interpolate)(Entity, Unknown_Parameter);
+	}
+
+	return 1;
+}
+
 static void* Original_Send_Move;
 
 static void __cdecl Redirected_Send_Move()
@@ -615,9 +700,13 @@ static void __fastcall Redirected_Post_Network_Data_Received(void* Unknown_Param
 
 static void __cdecl CL_Move_Hook(float Accumulated_Extra_Samples, bool Final_Tick)
 {
-	Extra_Commands = -1;
+	LuaHost_BeginMove();
 
-	if (Rapid_Fire_Active() == true)
+	const bool Rapid_Fire = (Rapid_Fire_Active() == true);
+
+	Redirect_Update_Animations(Rapid_Fire && (*(void**)((unsigned __int32)Client_Module + 7498712) != nullptr));
+
+	if (Rapid_Fire == true)
 	{
 		void* Local_Player = *(void**)((unsigned __int32)Client_Module + 7498712);
 
@@ -641,19 +730,31 @@ static void __cdecl CL_Move_Hook(float Accumulated_Extra_Samples, bool Final_Tic
 
 			Update_Animation_Type = 0;
 		}
+	}
 
+	__int32 Speed_Moves = Speed_Hack_Extra_Moves();
+
+	if ((Rapid_Fire == true) || (Extra_Commands > 0) || (Speed_Moves > 0))
+	{
 		while (true)
 		{
 			Original_CL_Move(Accumulated_Extra_Samples, Final_Tick);
 
 			((void(__cdecl*)())((unsigned __int32)Engine_Module + 527776))();
 
-			if (Extra_Commands <= 0)
+			if (Extra_Commands > 0)
+			{
+				Extra_Commands -= 1;
+
+				continue;
+			}
+
+			if (Speed_Moves <= 0)
 			{
 				break;
 			}
 
-			Extra_Commands -= 1;
+			Speed_Moves -= 1;
 		}
 	}
 	else
@@ -773,6 +874,11 @@ static void Install_Rapid_Fire()
 	Original_Send_Move = Install_Trampoline_Hook((unsigned __int32)Engine_Module + 0x7CEC0, 8, (void*)Redirected_Send_Move, "Send_Move");
 
 	Original_Post_Network_Data_Received = Install_Trampoline_Hook((unsigned __int32)Client_Module + 0x17BB40, 6, (void*)Redirected_Post_Network_Data_Received, "Post_Network_Data_Received");
+
+	if (Rapid_Fire_Is_Function_Start((unsigned __int32)Client_Module + 214256) == true)
+	{
+		Original_Interpolate = Install_Trampoline_Hook((unsigned __int32)Client_Module + 214256, 6, (void*)Redirected_Interpolate_Hook, "Interpolate");
+	}
 
 	const unsigned __int8 Expected_74[1] = { 0x74 };
 	const unsigned __int8 Patch_EB[1] = { 0xEB };
